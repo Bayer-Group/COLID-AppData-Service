@@ -1,0 +1,46 @@
+﻿using COLID.AppDataService.Repositories;
+using COLID.AppDataService.Services;
+using COLID.Cache;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace COLID.AppDataService
+{
+    public partial class Startup
+    {
+        public void ConfigureDockerServices(IServiceCollection services)
+        {
+            ConfigureServices(services);
+
+            var useSQLite = Configuration.GetValue<bool>("UseSQLite");
+            if (useSQLite)
+            {
+                services.AddSQLiteDatabaseContext(Configuration);
+            }
+            else
+            {
+                services.AddMySqlDatabaseContext(Configuration);
+            }
+
+            var useInMemoryGraph = Configuration.GetValue<bool>("UseInMemoryGraph");
+            if (useInMemoryGraph)
+            {
+                services.AddInMemoryActiveDirectory();
+            }
+            else
+            {
+                services.AddMicrosoftActiveDirectory(Configuration);
+            }
+
+            services.AddCacheModule(Configuration, GetSerializerSettings());
+        }
+
+        public void ConfigureDocker(IApplicationBuilder app, IWebHostEnvironment env)
+        {
+            app.UseSqlDatabaseMigration();
+            Configure(app, env);
+        }
+    }
+}
