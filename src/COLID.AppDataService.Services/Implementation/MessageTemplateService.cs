@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Threading.Tasks;
+using System.Linq;
 using AutoMapper;
 using COLID.AppDataService.Common.DataModel;
 using COLID.AppDataService.Common.DataModels.TransferObjects;
@@ -13,15 +13,14 @@ using Microsoft.Extensions.Logging;
 
 namespace COLID.AppDataService.Services.Implementation
 {
-    public class MessageTemplateService : GenericService<MessageTemplate, int>, IMessageTemplateService
+    public class MessageTemplateService : ServiceBase<MessageTemplate>, IMessageTemplateService
     {
-        private readonly IMessageTemplateRepository _mtRepo;
         private readonly IMapper _mapper;
         private readonly ICacheService _cache;
         private readonly ILogger<MessageTemplateService> _logger;
-        public MessageTemplateService(IMessageTemplateRepository mtRepo, IMapper mapper, ICacheService cache, ILogger<MessageTemplateService> logger) : base(mtRepo)
+
+        public MessageTemplateService(IGenericRepository repo, IMapper mapper, ICacheService cache, ILogger<MessageTemplateService> logger) : base(repo)
         {
-            _mtRepo = mtRepo;
             _mapper = mapper;
             _cache = cache;
             _logger = logger;
@@ -29,48 +28,63 @@ namespace COLID.AppDataService.Services.Implementation
 
         public MessageTemplate GetOne(MessageType type)
         {
-            return _cache.GetOrAdd(type.ToString(), () => _mtRepo.GetOne(type));
+            return _cache.GetOrAdd(type.ToString(), () => GetOne(mt => mt.Type.Equals(type)));
         }
 
         public MessageTemplate Create(MessageTemplateDto messageTemplateDto)
         {
             var messageTemplate = CheckAndPrepareMessageTemplateEntityForCreate(messageTemplateDto);
-            return _cache.GetOrAdd(messageTemplateDto.Type.ToString(), () => _mtRepo.Create(messageTemplate));
-        }
+            Create(messageTemplate);
+            Save();
 
-        public async Task<MessageTemplate> CreateAsync(MessageTemplateDto messageTemplateDto)
-        {
-            var messageTemplate = CheckAndPrepareMessageTemplateEntityForCreate(messageTemplateDto);
-            return await _cache.GetOrAddAsync(messageTemplateDto.Type.ToString(), () => _mtRepo.CreateAsync(messageTemplate));
+            return _cache.GetOrAdd(messageTemplateDto.Type.ToString(), () => messageTemplate); // TODO CK: test this !
         }
 
         public MessageTemplate Update(MessageTemplateDto messageTemplateDto)
         {
             Guard.IsNotNull(messageTemplateDto);
 
-            if (_mtRepo.TryGetOne(messageTemplateDto, out var entity))
+            if (TryGetOne(messageTemplateDto, out var entity))
             {
                 throw new EntityNotChangedException("Couldn't update the message template, because is hasn't changed");
             }
 
             var messageType = messageTemplateDto.Type;
-            
+
             entity = GetOne(messageType);
             entity.Subject = messageTemplateDto.Subject;
             entity.Body = messageTemplateDto.Body;
+            Save();
+            _cache.Delete(messageType.ToString());
 
-            return _cache.Update(messageType.ToString(), () => _mtRepo.Update(entity));
+            return entity;
         }
 
         private MessageTemplate CheckAndPrepareMessageTemplateEntityForCreate(MessageTemplateDto messageTemplateDto)
         {
-            if (_mtRepo.TryGetOne(messageTemplateDto.Type, out var entity))
+            if (TryGetOne(messageTemplateDto.Type, out var entity))
             {
                 throw new EntityAlreadyExistsException("Couldn't create a new message template, because a similar template already exists", entity);
             }
 
             var messageTemplate = _mapper.Map<MessageTemplate>(messageTemplateDto);
             return messageTemplate;
+        }
+
+        private bool TryGetOne(MessageTemplateDto dto, out MessageTemplate entity)
+        {
+            Guard.IsNotNull(dto);
+
+            return TryGetOne(out entity, 
+                mt =>
+                    mt.Type.Equals(dto.Type)
+                    && mt.Subject.Equals(dto.Subject)
+                    && mt.Body.Equals(dto.Body));
+        }
+
+        private bool TryGetOne(MessageType messageType, out MessageTemplate entity)
+        {
+            return TryGetOne(out entity, mt => mt.Type.Equals(messageType));
         }
     }
 }

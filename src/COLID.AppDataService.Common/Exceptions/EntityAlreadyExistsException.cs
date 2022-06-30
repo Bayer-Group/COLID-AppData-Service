@@ -13,7 +13,7 @@ namespace COLID.AppDataService.Common.Exceptions
         {
         }
 
-        public EntityAlreadyExistsException(string message, EntityBase entity) : base(message)
+        public EntityAlreadyExistsException(string message, IEntity entity) : base(message)
         {
             base.Data["entity"] = entity;
         }

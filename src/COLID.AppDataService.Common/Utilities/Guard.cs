@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Net.Mail;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json.Linq;
 
@@ -30,10 +29,10 @@ namespace COLID.AppDataService.Common.Utilities
             }
         }
 
-        public static void IsNotNullOrEmpty<T>(ICollection<T> col)
+        public static void IsNotNullOrEmpty<T>(IEnumerable<T> enumerable)
         {
-            if (col == null || !col.Any())
-                throw new ArgumentNullException(nameof(col), $"{nameof(col)} cannot be null or empty");
+            if (enumerable == null || !enumerable.Any())
+                throw new ArgumentNullException(typeof(T).FullName, $"{typeof(T).Name} cannot be null or empty");
         }
 
         public static void IsNotEmpty(string str)

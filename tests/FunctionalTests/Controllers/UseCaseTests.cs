@@ -100,8 +100,8 @@ namespace COLID.AppDataService.Tests.Functional.Controllers
             Assert.NotNull(responseUser);
             Assert.Equal(cgUri.AbsoluteUri, responseUser.DefaultConsumerGroup.Uri.AbsoluteUri);
 
-            var x = await getUser(userId);
-            Assert.NotNull(x.DefaultConsumerGroup);
+            var cg = await GetFromUser<ConsumerGroup>(userId, "defaultConsumerGroup");
+            Assert.NotNull(cg);
         }
 
         private async Task DeleteCG(Uri cgUri)
@@ -141,13 +141,13 @@ namespace COLID.AppDataService.Tests.Functional.Controllers
 
         // ============================================================
 
-        private async Task<User> getUser(Guid userId)
+        private async Task<TEntity> GetFromUser<TEntity>(Guid userId, string pathSuffix = null)
         {
-            var response = await Client.GetAsync($"{USER_PATH}/{userId}");
+            var response = await Client.GetAsync($"{USER_PATH}/{userId}/{pathSuffix}");
             var stringResponse = await response.Content.ReadAsStringAsync();
-            _output.WriteLine("Found User: " + stringResponse + "\n\n");
+            _output.WriteLine($"Found {typeof(TEntity)}: " + stringResponse + "\n\n");
             response.EnsureSuccessStatusCode();
-            var responseUser = JsonConvert.DeserializeObject<User>(stringResponse);
+            var responseUser = JsonConvert.DeserializeObject<TEntity>(stringResponse);
 
             Assert.NotNull(responseUser);
             return responseUser;

@@ -5,7 +5,7 @@ using Newtonsoft.Json.Converters;
 
 namespace COLID.AppDataService.Common.DataModel
 {
-    public class MessageConfig : Entity<int>
+    public class MessageConfig : EntityBase<int>
     {
         [JsonConverter(typeof(StringEnumConverter))]
         public SendInterval SendInterval { get; set; }

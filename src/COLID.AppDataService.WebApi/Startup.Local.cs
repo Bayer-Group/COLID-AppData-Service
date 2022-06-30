@@ -2,7 +2,6 @@
 using COLID.AppDataService.Services;
 using COLID.Cache;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -43,7 +42,7 @@ namespace COLID.AppDataService
             services.AddCacheModule(Configuration, GetSerializerSettings());
         }
 
-        public void ConfigureLocal(IApplicationBuilder app, IWebHostEnvironment env)
+        public void ConfigureLocal(IApplicationBuilder app)
         {
             var useSQLite = Configuration.GetValue<bool>("UseSQLite");
             if (useSQLite)
@@ -55,7 +54,7 @@ namespace COLID.AppDataService
                 app.UseSqlDatabaseMigration();
             }
 
-            Configure(app, env);
+            Configure(app);
         }
     }
 }

@@ -4,7 +4,7 @@ using Newtonsoft.Json.Linq;
 
 namespace COLID.AppDataService.Common.DataModel
 {
-    public class SearchFilterEditor : Entity<int>
+    public class SearchFilterEditor : EntityBase<int>
     {
         public JObject FilterJson { get; set; }
 

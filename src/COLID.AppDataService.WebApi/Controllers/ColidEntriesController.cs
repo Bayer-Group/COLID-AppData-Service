@@ -66,17 +66,16 @@ namespace COLID.AppDataService.Controllers
         public async Task<IActionResult> CreateMessagesOfInvalidUsersForContact([FromBody] ColidEntryContactInvalidUsersDto cec)
         {
             await _messageService.CreateMessagesOfInvalidUsersForContact(cec);
-            return Created("/api/ColidEntries/invalidUser","created");
+            return Created("/api/ColidEntries/invalidUser", "created");
         }
-
 
         /// <summary>
         /// Calculate the amount of subscriptions per colid pid uri and return the result.
         /// </summary>
-        [HttpGet]
-        public IActionResult GetColidPidUrisAndAmountSubscriptions()
+        [HttpPost("subscriptions")]
+        public IActionResult GetColidPidUrisAndAmountSubscriptions([FromBody] ISet<Uri> colidPidUris)
         {
-            var colidEntrySubscriptionAmountDto = _colidEntrySubscriptionService.GetColidPidUrisAndAmountSubscriptions();
+            var colidEntrySubscriptionAmountDto = _colidEntrySubscriptionService.GetColidPidUrisAndAmountSubscriptions(colidPidUris);
             return Ok(colidEntrySubscriptionAmountDto);
         }
     }

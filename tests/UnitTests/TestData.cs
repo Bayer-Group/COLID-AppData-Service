@@ -21,7 +21,21 @@ namespace COLID.AppDataService.Tests.Unit
                 .WithId(id)
                 .WithEmailAddress(email)
                 .WithMessageConfig(GenerateSampleMessageConfig())
+                .WithSearchFilterDataMarketplace(new List<SearchFilterDataMarketplace>())
                 .Build();
+        }
+
+        public static User GenerateRandomUserWithSavedSearchAndStoredQuery()
+        {
+            var user = TestData.GenerateRandomUser();
+            user.MessageConfig = new MessageConfig() { DeleteInterval = DeleteInterval.Monthly , SendInterval = SendInterval.Weekly };
+            var searchFilter = TestData.GenerateRandomSearchFilterDataMarketplace();
+            searchFilter.User = user;
+            var storedQuery = TestData.GenerateRandomStoredQuery();
+            user.SearchFiltersDataMarketplace = new List<SearchFilterDataMarketplace>();
+            searchFilter.StoredQuery = storedQuery;
+            user.SearchFiltersDataMarketplace.Add(searchFilter);
+            return user;
         }
 
         public static ConsumerGroup GenerateRandomConsumerGroup()
@@ -52,69 +66,84 @@ namespace COLID.AppDataService.Tests.Unit
         {
             var randomString = Guid.NewGuid().ToString("n");
             var name = "SearchFilter_" + randomString.Substring(0, 10);
-            var json = JObject.Parse("{\"value1\":\"" + randomString.Substring(0, 10) + "\"}");
+            var json = JObject.Parse("{ \"aggregations\": { \"http://www.w3.org/1999/02/22-rdf-syntax-ns#type\": [ \"Ontologie\" ] }, \"ranges\": { } }");
             return new SearchFilterDataMarketplaceBuilder()
                 .WithName(name)
                 .WithFilterJson(json)
                 .Build();
         }
 
+        public static StoredQuery GenerateRandomStoredQuery()
+        {
+            var random = new Random(DateTime.Now.Second);
+            var randomExecInterval = (ExecutionInterval) random.Next(0, 2);
+            return new StoredQueryBuilder()
+                .WithExecutionInterval(randomExecInterval)
+                .WithSearchNumberResult(random.Next(0,20))
+                .WithlatestExecutionDate(DateTime.Now.AddMonths(-1))
+                .WithSearchResultHash("testStringHash"+ random.Next(0, 200))
+                .Build();
+        }
+
         public static ColidEntrySubscription GenerateRandomColidEntrySubscription()
         {
             return new ColidEntrySubscriptionBuilder()
-                .WithColidEntry(new Uri($"https://pid.bayer.com/kos/19050#{Guid.NewGuid()}"))
+                .WithColidEntry(new Uri($"https://pid.bayer.com/kos/19050/{Guid.NewGuid()}"))
                 .Build();
         }
 
         public static ColidEntrySubscriptionDto GenerateRandomColidEntrySubscriptionDto()
         {
             return new ColidEntrySubscriptionBuilder()
-                .WithColidEntry(new Uri($"https://pid.bayer.com/kos/19050#{Guid.NewGuid()}"))
+                .WithColidEntry(new Uri($"https://pid.bayer.com/kos/19050/{Guid.NewGuid()}"))
                 .BuildDto();
         }
 
         #region MessageTemplates - ColidEntrySubscriptions
+
         public static MessageTemplate GenerateSampleMessageTemplateForColidEntrySubscriptionUpdate()
         {
             return GenerateSampleMessageTemplateForColidEntrySubscription(MessageType.ColidEntrySubscriptionUpdate)
                 .Build();
         }
+
         public static MessageTemplateDto GenerateSampleMessageTemplateForColidEntrySubscriptionUpdateDto()
         {
             return GenerateSampleMessageTemplateForColidEntrySubscription(MessageType.ColidEntrySubscriptionUpdate)
                 .BuildDto();
         }
+
         public static MessageTemplate GenerateSampleMessageTemplateForColidEntrySubscriptionDelete()
         {
             return GenerateSampleMessageTemplateForColidEntrySubscription(MessageType.ColidEntrySubscriptionDelete)
                 .Build();
         }
+
         public static MessageTemplateDto GenerateSampleMessageTemplateForColidEntrySubscriptionDeleteDto()
         {
             return GenerateSampleMessageTemplateForColidEntrySubscription(MessageType.ColidEntrySubscriptionDelete)
                 .BuildDto();
         }
 
-        #endregion
-
+        #endregion MessageTemplates - ColidEntrySubscriptions
 
         private static MessageTemplateBuilder GenerateSampleMessageTemplateForColidEntrySubscription(MessageType messageType)
         {
             var msgTplBuilder = new MessageTemplateBuilder()
                 .WithType(messageType);
 
-                if (MessageType.ColidEntrySubscriptionUpdate.Equals(messageType))
-                {
-                    return msgTplBuilder
-                        .WithSubject($"Updated: %COLID_LABEL%")
-                        .WithBody(
-                            "The resource with title %COLID_LABEL% with the pid uri %COLID_PID_URI% has been updated in colid. Take a direct look by clicking on the uri.");
-                }
-                // else delete
+            if (MessageType.ColidEntrySubscriptionUpdate.Equals(messageType))
+            {
                 return msgTplBuilder
-                    .WithSubject($"Deleted: %COLID_LABEL%")
+                    .WithSubject($"Updated: %COLID_LABEL%")
                     .WithBody(
-                        "The resource with title %COLID_LABEL% with the pid uri %COLID_PID_URI% has been deleted in colid.");
+                        "The resource with title %COLID_LABEL% with the pid uri %COLID_PID_URI% has been updated in colid. Take a direct look by clicking on the uri.");
+            }
+            // else delete
+            return msgTplBuilder
+                .WithSubject($"Deleted: %COLID_LABEL%")
+                .WithBody(
+                    "The resource with title %COLID_LABEL% with the pid uri %COLID_PID_URI% has been deleted in colid.");
         }
 
         public static MessageConfig GenerateSampleMessageConfig()
@@ -150,7 +179,6 @@ namespace COLID.AppDataService.Tests.Unit
                 .WithDeleteOn(deleteOnDate)
                 .BuildDto();
         }
-
 
         public static IEnumerable<User> GetPreconfiguredUsers()
         {
@@ -257,26 +285,27 @@ namespace COLID.AppDataService.Tests.Unit
 
         public static IEnumerable<StoredQuery> GetPreconfiguredStoredQueries()
         {
-            var lastExecResult = "{\"success\":true}";
-            var queryJson = "{\"query\":\"Select * from mlem\"}";
-
+ 
             return new List<StoredQuery>() {
-                new StoredQueryBuilder().WithQueryName("First stored query")
-                    .WithQueryJson(queryJson)
+                new StoredQueryBuilder()
+                    .WithSearchNumberResult(5)
                     .WithExecutionInterval(ExecutionInterval.Daily)
-                    .WithLastExecutionResult(lastExecResult)
+                    .WithSearchResultHash("testHash")
+                    .WithlatestExecutionDate(DateTime.Now)
                     .Build(),
 
-                new StoredQueryBuilder().WithQueryName("Second stored query")
-                    .WithQueryJson(queryJson)
+                new StoredQueryBuilder()
+                    .WithSearchNumberResult(2)
                     .WithExecutionInterval(ExecutionInterval.Daily)
-                    .WithLastExecutionResult(lastExecResult)
+                    .WithSearchResultHash("testHash2")
+                    .WithlatestExecutionDate(DateTime.Now)
                     .Build(),
 
-                new StoredQueryBuilder().WithQueryName("Third stored query")
-                    .WithQueryJson(queryJson)
+                new StoredQueryBuilder()
+                    .WithSearchNumberResult(1)
                     .WithExecutionInterval(ExecutionInterval.Daily)
-                    .WithLastExecutionResult(lastExecResult)
+                    .WithSearchResultHash("testHash3")
+                    .WithlatestExecutionDate(DateTime.Now)
                     .Build(),
             };
         }
@@ -310,7 +339,7 @@ namespace COLID.AppDataService.Tests.Unit
                 GenerateSampleMessageTemplateForColidEntrySubscription(MessageType.ColidEntrySubscriptionUpdate).WithId(1).Build(),
 
                 GenerateSampleMessageTemplateForColidEntrySubscription(MessageType.ColidEntrySubscriptionDelete).WithId(2).Build(),
-                
+
                 new MessageTemplateBuilder()
                     .WithId(3)
                     .WithType(MessageType.StoredQueryResult)

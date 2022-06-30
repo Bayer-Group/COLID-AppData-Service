@@ -7,6 +7,7 @@ using System.Net.Mime;
 using System.Text;
 using System.Threading.Tasks;
 using AutoMapper;
+using Castle.Core.Internal;
 using COLID.AppDataService.Common.DataModel;
 using COLID.AppDataService.Common.DataModels.TransferObjects;
 using COLID.AppDataService.Common.Enums;
@@ -20,7 +21,7 @@ using Xunit.Abstractions;
 namespace COLID.AppDataService.Tests.Functional.Controllers
 {
     [Collection("Sequential")]
-    public class UserControllerTests : IClassFixture<FunctionTestsFixture>
+    public partial class UserControllerTests : IClassFixture<FunctionTestsFixture>
     {
         public HttpClient Client { get; }
 
@@ -901,7 +902,8 @@ namespace COLID.AppDataService.Tests.Functional.Controllers
             Assert.NotEqual(0, responseSf.Id);
 
             // Check if entity is REALLY added to the user
-            var verifyUser = await _api.GetUser(user.Id);
+            var verifyUser = _seeder.GetAll<User>(nameof(User.SearchFiltersDataMarketplace))
+                .SingleOrDefault(u => u.Id.Equals(user.Id));
             Assert.NotNull(verifyUser.SearchFiltersDataMarketplace);
             Assert.True(verifyUser.SearchFiltersDataMarketplace.Any());
         }
@@ -969,8 +971,9 @@ namespace COLID.AppDataService.Tests.Functional.Controllers
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             // Check if entity is REALLY removed from the user
-            var verifyUser = await _api.GetUser(user.Id);
-            Assert.True(verifyUser.SearchFiltersDataMarketplace == null || !verifyUser.SearchFiltersDataMarketplace.Any());
+            var verifyUser = _seeder.GetAll<User>(nameof(User.SearchFiltersDataMarketplace))
+                .SingleOrDefault(u => u.Id.Equals(user.Id));
+            Assert.True(verifyUser.SearchFiltersDataMarketplace.IsNullOrEmpty());
         }
 
         [Fact]
@@ -1016,6 +1019,281 @@ namespace COLID.AppDataService.Tests.Functional.Controllers
         }
 
         #endregion Search Filters Data Marketplace | /api/users/{userId}/searchFilterDataMarketplace/*
+
+        #region StoredQueries
+
+       [Fact]
+        public async Task SearchFiltersDataMarketplaceOnlyWithStoredQueriesAsync_Get_All_Returns_Ok()
+        {
+            //generate Userdata
+            var user1 = _seeder.Add(TestData.GenerateRandomUser());
+            var user2 = _seeder.Add(TestData.GenerateRandomUser());
+
+            //generate SearchfilterDataMarketplace
+            var sf1 = _seeder.Add(TestData.GenerateRandomSearchFilterDataMarketplace());
+            var sf2 = _seeder.Add(TestData.GenerateRandomSearchFilterDataMarketplace());
+            var sf3 = _seeder.Add(TestData.GenerateRandomSearchFilterDataMarketplace());
+            var sq1 = _seeder.Add(TestData.GenerateRandomStoredQuery());
+            var sq2 = _seeder.Add(TestData.GenerateRandomStoredQuery());
+
+            //Assign filter and storedQuery to User1
+            user1 = _seeder.AppendSearchFilterDataMarketplaceToUser(sf1, user1);
+            user1 = _seeder.AppendStoredQueryToSearchFilterDataMarketplace(user1, sf1, sq1);
+            user1 = _seeder.AppendSearchFilterDataMarketplaceToUser(sf2, user1);
+            user1 = _seeder.AppendStoredQueryToSearchFilterDataMarketplace(user1, sf2, sq2);
+
+            //Assign filter without storedQuery to User2
+            user2 = _seeder.AppendSearchFilterDataMarketplaceToUser(sf3, user2);
+
+            var response = await Client.GetAsync($"{PATH}/allSubscribedSearchFiltersDataMarketplace");
+            var stringResponse = await response.Content.ReadAsStringAsync();
+            _output.WriteLine(stringResponse);
+            response.EnsureSuccessStatusCode();
+            var userlist = JsonConvert.DeserializeObject<List<User>>(stringResponse);
+
+            Assert.NotNull(userlist);
+            Assert.NotEmpty(userlist);
+            Assert.NotNull(userlist.Find(x=>x.Id == user1.Id));
+            Assert.Null(userlist.Find(x => x.Id == user2.Id));
+        }
+
+        [Fact]
+        public async Task SearchFiltersDataMarketplaceOnlyWithStoredQueriesAsync_Get_Single_Returns_Ok()
+        {
+            var user = _seeder.Add(TestData.GenerateRandomUser());
+            var sf1 = _seeder.Add(TestData.GenerateRandomSearchFilterDataMarketplace());
+            var sf2 = _seeder.Add(TestData.GenerateRandomSearchFilterDataMarketplace());
+            var sq = _seeder.Add(TestData.GenerateRandomStoredQuery());
+
+            user = _seeder.AppendSearchFilterDataMarketplaceToUser(sf1, user);
+            user = _seeder.AppendStoredQueryToSearchFilterDataMarketplace(user, sf1, sq);
+            user = _seeder.AppendSearchFilterDataMarketplaceToUser(sf2, user);
+
+            var response = await Client.GetAsync($"{PATH}/{user.Id}/subscribedSearchFiltersDataMarketplace");
+            var stringResponse = await response.Content.ReadAsStringAsync();
+            _output.WriteLine(stringResponse);
+            response.EnsureSuccessStatusCode();
+
+            var responseFilters = JsonConvert.DeserializeObject<List<SearchFilterDataMarketplace>>(stringResponse);
+            Assert.NotNull(responseFilters);
+            Assert.Single(responseFilters);
+            Assert.Equal(sf1.Id, responseFilters.FirstOrDefault().Id);
+            Assert.NotNull(responseFilters.FirstOrDefault().StoredQuery); 
+        }
+
+        [Fact]
+        public async Task SearchFilterDataMarketplaceOnlyWithStoredQueriesAsync_Get_Single_Returns_NotFound_IfUserDoesNotExist()
+        {
+            var response = await Client.GetAsync($"{PATH}/{Guid.NewGuid()}/subscribedSearchFiltersDataMarketplace");
+            var stringResponse = await response.Content.ReadAsStringAsync();
+            _output.WriteLine(stringResponse);
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task SearchFilterDataMarketplaceOnlyWithStoredQueriesAsync_Get_Single_Returns_BadRequest_IfUserIdIsNoGuid()
+        {
+            var response = await Client.GetAsync($"{PATH}/NotValidGuid/subscribedSearchFiltersDataMarketplace");
+            var stringResponse = await response.Content.ReadAsStringAsync();
+            _output.WriteLine(stringResponse);
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task AddStoredQueryToSearchFilterDataMarketplace_WhenStoredQueryEmpty_Put_Returns_Ok()
+        {
+            var user = _seeder.Add(TestData.GenerateRandomUser());
+            var sf1 = _seeder.Add(TestData.GenerateRandomSearchFilterDataMarketplace());
+            user = _seeder.AppendSearchFilterDataMarketplaceToUser(sf1, user);
+            var sqDto = _mapper.Map<StoredQueryDto>(new StoredQueryDto()
+            {
+                ExecutionInterval = ExecutionInterval.Daily,
+                SearchFilterDataMarketplaceId = sf1.Id
+
+            });
+            var response = await Client.PutAsync($"{PATH}/{user.Id}/subscribeToSearchFilterDataMarketplace", BuildJsonHttpContent(sqDto));
+            var stringResponse = await response.Content.ReadAsStringAsync();
+            _output.WriteLine(stringResponse);
+            response.EnsureSuccessStatusCode();
+
+            var responseSf = JsonConvert.DeserializeObject<SearchFilterDataMarketplace>(stringResponse);
+            Assert.NotNull(responseSf);
+            Assert.Equal(sf1.Id, responseSf.Id);
+            Assert.NotNull(responseSf.StoredQuery);
+
+            // Check if entity is REALLY added to the user
+            var verifyUser = _seeder.GetAll<User>(nameof(User.SearchFiltersDataMarketplace))
+                .SingleOrDefault(u => u.Id.Equals(user.Id));
+            Assert.NotNull(verifyUser.SearchFiltersDataMarketplace);
+            Assert.True(verifyUser.SearchFiltersDataMarketplace.Any());
+        }
+
+        [Fact]
+        public async Task AddStoredQueryToSearchFilterDataMarketplace_Put_Returns_NotFound_IfSearchFilterDataMarketplaceDoesNotExist()
+        {
+            var user = _seeder.Add(TestData.GenerateRandomUser());
+            var sf1 = _seeder.Add(TestData.GenerateRandomSearchFilterDataMarketplace());
+            user = _seeder.AppendSearchFilterDataMarketplaceToUser(sf1, user);
+            var sqDto = _mapper.Map<StoredQueryDto>(new StoredQueryDto()
+            {
+                ExecutionInterval = ExecutionInterval.Daily,
+                SearchFilterDataMarketplaceId = 99999
+
+            });
+            var response = await Client.PutAsync($"{PATH}/{user.Id}/subscribeToSearchFilterDataMarketplace", BuildJsonHttpContent(sqDto));
+            var stringResponse = await response.Content.ReadAsStringAsync();
+            _output.WriteLine(stringResponse); 
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task AddStoredQueryToSearchFilterDataMarketplace_Put_Returns_NotFound_IfUserNotExist()
+        { 
+            var sqDto = _mapper.Map<StoredQueryDto>(new StoredQueryDto()
+            {
+                ExecutionInterval = ExecutionInterval.Daily,
+                SearchFilterDataMarketplaceId = 1
+
+            });
+            var response = await Client.PutAsync($"{PATH}/{Guid.NewGuid()}/subscribeToSearchFilterDataMarketplace", BuildJsonHttpContent(sqDto));
+            var stringResponse = await response.Content.ReadAsStringAsync();
+            _output.WriteLine(stringResponse);
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task AddStoredQueryToSearchFilterDataMarketplace_Put_Returns_NotFound_IfUserIdIsNoGuid()
+        {
+            var sqDto = _mapper.Map<StoredQueryDto>(new StoredQueryDto()
+            {
+                ExecutionInterval = ExecutionInterval.Daily,
+                SearchFilterDataMarketplaceId = 1
+
+            });
+            var response = await Client.PutAsync($"{PATH}/NoValidGuid/subscribeToSearchFilterDataMarketplace", BuildJsonHttpContent(sqDto));
+            var stringResponse = await response.Content.ReadAsStringAsync();
+            _output.WriteLine(stringResponse);
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task AddStoredQueryToSearchFilterDataMarketplace_WhenStoredQueryAlreadyExists_Put_Returns_Ok()
+        {
+            var user = _seeder.Add(TestData.GenerateRandomUser());
+            var sf  = _seeder.Add(TestData.GenerateRandomSearchFilterDataMarketplace());
+            var sq  = _seeder.Add(TestData.GenerateRandomStoredQuery());
+            user = _seeder.AppendSearchFilterDataMarketplaceToUser(sf , user);
+            user  = _seeder.AppendStoredQueryToSearchFilterDataMarketplace(user, sf, sq);
+            var sqDto = _mapper.Map<StoredQueryDto>(new StoredQueryDto()
+            {
+                ExecutionInterval = ExecutionInterval.Daily,
+                SearchFilterDataMarketplaceId = sf.Id
+
+            });
+            var response = await Client.PutAsync($"{PATH}/{user.Id}/subscribeToSearchFilterDataMarketplace", BuildJsonHttpContent(sqDto));
+            var stringResponse = await response.Content.ReadAsStringAsync();
+            _output.WriteLine(stringResponse);
+            response.EnsureSuccessStatusCode();
+            var responseSf = JsonConvert.DeserializeObject<SearchFilterDataMarketplace>(stringResponse);
+            Assert.NotNull(responseSf);
+            Assert.Equal(sf.Id, responseSf.Id);
+            Assert.NotNull(responseSf.StoredQuery);
+            Assert.NotEqual(sq.Id, responseSf.StoredQuery.Id);
+
+            // Check if entity is REALLY added to the user
+            var verifyUser = _seeder.GetAll<User>(nameof(User.SearchFiltersDataMarketplace))
+                .SingleOrDefault(u => u.Id.Equals(user.Id));
+            Assert.NotNull(verifyUser.SearchFiltersDataMarketplace);
+            Assert.True(verifyUser.SearchFiltersDataMarketplace.Any());
+            Assert.NotEqual(verifyUser.SearchFiltersDataMarketplace.FirstOrDefault().StoredQueryId, sq.Id);
+        }
+
+        [Fact]
+        public async Task AddStoredQueryToSearchFilterDataMarketplace_Put_Returns_BadRequest_IfContentIsEmpty()
+        {
+            var user = _seeder.Add(TestData.GenerateRandomUser());
+            var response = await Client.PutAsync($"{PATH}/{user.Id}/subscribeToSearchFilterDataMarketplace", BuildJsonHttpContent(""));
+            var stringResponse = await response.Content.ReadAsStringAsync();
+            _output.WriteLine(stringResponse);
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task AddStoredQueryToSearchFilterDataMarketplace_Put_Returns_UnsupportedMediaType_IfContentIsPlainText()
+        {
+            var user = _seeder.Add(TestData.GenerateRandomUser());
+            var response = await Client.PutAsync($"{PATH}/{user.Id}/subscribeToSearchFilterDataMarketplace", BuildPlainTextHttpContent("123"));
+            var stringResponse = await response.Content.ReadAsStringAsync();
+            _output.WriteLine(stringResponse);
+            Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task DeleteStoredQueryToSearchFilterDataMarketplace_Delete_Single_Returns_Ok()
+        {
+            var user = _seeder.Add(TestData.GenerateRandomUser());
+            var sf = _seeder.Add(TestData.GenerateRandomSearchFilterDataMarketplace());
+            var sq = _seeder.Add(TestData.GenerateRandomStoredQuery());
+
+            user = _seeder.AppendSearchFilterDataMarketplaceToUser(sf, user);
+            user = _seeder.AppendStoredQueryToSearchFilterDataMarketplace(user, sf, sq);
+
+            var response = await Client.DeleteAsync($"{PATH}/{user.Id}/removeSubscriptionFromSearchFilterDataMarketplace/{sf.Id}");
+            var stringResponse = await response.Content.ReadAsStringAsync();
+            _output.WriteLine(stringResponse);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            // Check if entity is REALLY removed from the user
+            var verifyUser = _seeder.GetAll<User>(nameof(User.SearchFiltersDataMarketplace))
+                .SingleOrDefault(u => u.Id.Equals(user.Id));
+            Assert.True(verifyUser.SearchFiltersDataMarketplace.Any());
+            Assert.Null(verifyUser.SearchFiltersDataMarketplace.FirstOrDefault().StoredQuery);
+            Assert.Null(verifyUser.SearchFiltersDataMarketplace.FirstOrDefault().StoredQueryId);
+        }
+
+        [Fact]
+        public async Task DeleteStoredQueryToSearchFilterDataMarketplace_Delete_Single_Returns_NotFound_UserDoesNotExist()
+        {
+            var sfId = 1;
+            var response = await Client.DeleteAsync($"{PATH}/{new Guid()}/removeSubscriptionFromSearchFilterDataMarketplace/{sfId}");
+            var stringResponse = await response.Content.ReadAsStringAsync();
+            _output.WriteLine(stringResponse);
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task DeleteStoredQueryToSearchFilterDataMarketplace_Delete_Single_Returns_NotFound_SearchFilterIdDoesNotExist()
+        {
+            var user = _seeder.Add(TestData.GenerateRandomUser());
+            var sfId = 1;
+            var response = await Client.DeleteAsync($"{PATH}/{new Guid()}/removeSubscriptionFromSearchFilterDataMarketplace/{sfId}");
+            var stringResponse = await response.Content.ReadAsStringAsync();
+            _output.WriteLine(stringResponse);
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task DeleteStoredQueryToSearchFilterDataMarketplace_Delete_Single_Returns_BadRequest_UserIdIsNoGuid()
+        {
+            var sfId = 10;
+            var response = await Client.DeleteAsync($"{PATH}/NoValidGuid/removeSubscriptionFromSearchFilterDataMarketplace/{sfId}");
+            var stringResponse = await response.Content.ReadAsStringAsync();
+            _output.WriteLine(stringResponse);
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task DeleteStoredQueryToSearchFilterDataMarketplace_Delete_Single_Returns_BadRequest_SearchFilterIdIsNoInteger()
+        {
+            var user = _seeder.Add(TestData.GenerateRandomUser());
+            var sfId = "abc";
+            var response = await Client.DeleteAsync($"{PATH}/{user.Id}/removeSubscriptionFromSearchFilterDataMarketplace/{sfId}");
+            var stringResponse = await response.Content.ReadAsStringAsync();
+            _output.WriteLine(stringResponse);
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        #endregion
 
         #region Colid Entry Subscriptions | /api/users/{userId}/colidEntrySubscriptions/*
 
@@ -1079,7 +1357,8 @@ namespace COLID.AppDataService.Tests.Functional.Controllers
             Assert.NotEqual(0, responseCE.Id);
 
             // Check if entity is REALLY added to the user
-            var verifyUser = await _api.GetUser(user.Id);
+            var verifyUser = _seeder.GetAll<User>(nameof(User.ColidEntrySubscriptions))
+                .SingleOrDefault(u => u.Id.Equals(user.Id));
             Assert.NotNull(verifyUser.ColidEntrySubscriptions);
             Assert.True(verifyUser.ColidEntrySubscriptions.Any());
         }
@@ -1161,8 +1440,9 @@ namespace COLID.AppDataService.Tests.Functional.Controllers
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             // Check if entity is REALLY removed from the user
-            var verifyUser = await _api.GetUser(user.Id);
-            Assert.True(verifyUser.ColidEntrySubscriptions == null || !verifyUser.ColidEntrySubscriptions.Any());
+            var verifyUser = _seeder.GetAll<User>(nameof(User.ColidEntrySubscriptions))
+                .SingleOrDefault(u => u.Id.Equals(user.Id));
+            Assert.True(verifyUser.ColidEntrySubscriptions.IsNullOrEmpty());
         }
 
         [Fact]
@@ -1191,6 +1471,7 @@ namespace COLID.AppDataService.Tests.Functional.Controllers
         #endregion Colid Entry Subscriptions | /api/users/{userId}/colidEntrySubscriptions/*
 
         #region Message Config | /api/users/{userId}/messageConfig/*
+
         [Fact]
         public async Task MessageConfig_Get_Single_Returns_Ok()
         {
@@ -1301,7 +1582,7 @@ namespace COLID.AppDataService.Tests.Functional.Controllers
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         }
 
-        #endregion
+        #endregion Message Config | /api/users/{userId}/messageConfig/*
 
         #region Message | /api/users/{userId}/messages
 
@@ -1356,8 +1637,9 @@ namespace COLID.AppDataService.Tests.Functional.Controllers
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             // Check if entity is REALLY removed from the user
-            var verifyUser = await _api.GetUser(user.Id);
-            Assert.True(verifyUser.Messages == null || !verifyUser.Messages.Any());
+            var verifyUser = _seeder.GetAll<User>(nameof(User.Messages))
+                .SingleOrDefault(u => u.Id.Equals(user.Id));
+            Assert.True(verifyUser.Messages.IsNullOrEmpty());
         }
 
         [Fact]
@@ -1425,7 +1707,8 @@ namespace COLID.AppDataService.Tests.Functional.Controllers
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             // Check if entity is REALLY removed from the user
-            var verifyUser = await _api.GetUser(user.Id);
+            var verifyUser = _seeder.GetAll<User>(nameof(User.Messages))
+                .SingleOrDefault(u => u.Id.Equals(user.Id));
             Assert.Equal(2, verifyUser.Messages.Count);
             Assert.All(verifyUser.Messages, m =>
             {
@@ -1474,7 +1757,8 @@ namespace COLID.AppDataService.Tests.Functional.Controllers
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             // Check if entity is REALLY removed from the user
-            var verifyUser = await _api.GetUser(user.Id);
+            var verifyUser = _seeder.GetAll<User>(nameof(User.Messages))
+                .SingleOrDefault(u => u.Id.Equals(user.Id));
             Assert.Equal(2, verifyUser.Messages.Count);
             Assert.All(verifyUser.Messages, m =>
             {
@@ -1517,7 +1801,8 @@ namespace COLID.AppDataService.Tests.Functional.Controllers
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             // Check if entity is REALLY removed from the user
-            var verifyUser = await _api.GetUser(user.Id);
+            var verifyUser = _seeder.GetAll<User>(nameof(User.Messages))
+                .SingleOrDefault(u => u.Id.Equals(user.Id));
             Assert.Single(verifyUser.Messages);
             Assert.Single(verifyUser.Messages, m => m.Id == seedMessage.Id && m.ReadOn != null);
         }
@@ -1581,7 +1866,8 @@ namespace COLID.AppDataService.Tests.Functional.Controllers
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             // Check if entity is REALLY removed from the user
-            var verifyUser = await _api.GetUser(user.Id);
+            var verifyUser = _seeder.GetAll<User>(nameof(User.Messages))
+                .SingleOrDefault(u => u.Id.Equals(user.Id));
             Assert.Single(verifyUser.Messages);
             Assert.Single(verifyUser.Messages, m => m.Id == seedMessage.Id && m.ReadOn != null && m.SendOn == null);
         }
@@ -1605,7 +1891,8 @@ namespace COLID.AppDataService.Tests.Functional.Controllers
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             // Check if entity is REALLY removed from the user
-            var verifyUser = await _api.GetUser(user.Id);
+            var verifyUser = _seeder.GetAll<User>(nameof(User.Messages))
+                .SingleOrDefault(u => u.Id.Equals(user.Id));
             Assert.Single(verifyUser.Messages);
             Assert.Single(verifyUser.Messages, m => m.Id == seedMessage.Id && m.ReadOn == seedMessage.ReadOn && m.SendOn == null);
         }
@@ -1652,7 +1939,7 @@ namespace COLID.AppDataService.Tests.Functional.Controllers
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         }
 
-        #endregion
+        #endregion Message | /api/users/{userId}/messages
 
         #region Helper methods
 

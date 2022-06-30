@@ -1,5 +1,4 @@
 ﻿using System;
-using AutoMapper;
 using COLID.AppDataService.Common.DataModel;
 using COLID.AppDataService.Common.Enums;
 using COLID.AppDataService.Common.Utilities;
@@ -9,14 +8,12 @@ using COLID.Cache.Services;
 
 namespace COLID.AppDataService.Services.Implementation
 {
-    public class WelcomeMessageService : GenericService<WelcomeMessage, int>, IWelcomeMessageService
+    public class WelcomeMessageService : ServiceBase<WelcomeMessage>, IWelcomeMessageService
     {
-        private readonly IWelcomeMessageRepository _wmRepo;
         private readonly ICacheService _cache;
 
-        public WelcomeMessageService(IWelcomeMessageRepository wmRepo, ICacheService cache) : base(wmRepo)
+        public WelcomeMessageService(IGenericRepository repo, ICacheService cache) : base(repo)
         {
-            _wmRepo = wmRepo;
             _cache = cache;
         }
 
@@ -32,7 +29,7 @@ namespace COLID.AppDataService.Services.Implementation
 
         private WelcomeMessage GetWelcomeMessage(ColidType type)
         {
-            return _cache.GetOrAdd(type.ToString(), () => _wmRepo.GetOne(type));
+            return _cache.GetOrAdd(type.ToString(), () => GetOne(wm => wm.Type.Equals(type)));
         }
 
         public WelcomeMessage UpdateWelcomeMessageEditor(string content)
@@ -48,11 +45,15 @@ namespace COLID.AppDataService.Services.Implementation
         private WelcomeMessage UpdateWelcomeMessage(ColidType type, string content)
         {
             Guard.IsNotEmpty(content);
-            var entity = GetWelcomeMessage(type);
-            entity.Content = content;
 
-            return _cache.Update(type.ToString(), () => _wmRepo.Update(entity));
+            var welcomeMessage = GetWelcomeMessage(type);
+            welcomeMessage.Content = content;
+            Update(welcomeMessage);
+            Save();
+
+            _cache.Delete(type.ToString());
+
+            return welcomeMessage;
         }
-        
     }
 }

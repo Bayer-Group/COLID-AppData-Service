@@ -14,7 +14,7 @@ namespace Repositories.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "3.1.3")
+                .HasAnnotation("ProductVersion", "3.1.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             modelBuilder.Entity("COLID.AppDataService.Common.DataModel.ColidEntrySubscription", b =>
@@ -85,6 +85,10 @@ namespace Repositories.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnName("id")
                         .HasColumnType("int");
+
+                    b.Property<string>("AdditionalInfo")
+                        .HasColumnName("additional_info")
+                        .HasColumnType("longtext CHARACTER SET utf8mb4");
 
                     b.Property<string>("Body")
                         .HasColumnName("body")
@@ -224,12 +228,24 @@ namespace Repositories.Migrations
                         .HasColumnName("name")
                         .HasColumnType("longtext CHARACTER SET utf8mb4");
 
+                    b.Property<string>("SearchTerm")
+                        .HasColumnName("search_term")
+                        .HasColumnType("longtext CHARACTER SET utf8mb4");
+
+                    b.Property<int?>("StoredQueryId")
+                        .HasColumnName("stored_query_id")
+                        .HasColumnType("int");
+
                     b.Property<Guid?>("UserId")
                         .HasColumnName("user_id")
                         .HasColumnType("char(36)");
 
                     b.HasKey("Id")
                         .HasName("pk_search_filter_data_marketplace");
+
+                    b.HasIndex("StoredQueryId")
+                        .IsUnique()
+                        .HasName("ix_search_filter_data_marketplace_stored_query_id");
 
                     b.HasIndex("UserId")
                         .HasName("ix_search_filter_data_marketplace_user_id");
@@ -277,35 +293,24 @@ namespace Repositories.Migrations
                         .HasColumnName("execution_interval")
                         .HasColumnType("int");
 
-                    b.Property<string>("LastExecutionResult")
-                        .HasColumnName("last_execution_result")
-                        .HasColumnType("longtext CHARACTER SET utf8mb4");
+                    b.Property<DateTime?>("LatestExecutionDate")
+                        .HasColumnName("latest_execution_date")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<DateTime?>("ModifiedAt")
                         .HasColumnName("modified_at")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<DateTime?>("NextExecutionAt")
-                        .HasColumnName("next_execution_at")
-                        .HasColumnType("datetime(6)");
+                    b.Property<int>("NumberSearchResults")
+                        .HasColumnName("number_search_results")
+                        .HasColumnType("int");
 
-                    b.Property<string>("QueryJson")
-                        .HasColumnName("query_json")
+                    b.Property<string>("SearchResultHash")
+                        .HasColumnName("search_result_hash")
                         .HasColumnType("longtext CHARACTER SET utf8mb4");
-
-                    b.Property<string>("QueryName")
-                        .HasColumnName("query_name")
-                        .HasColumnType("longtext CHARACTER SET utf8mb4");
-
-                    b.Property<Guid?>("UserId")
-                        .HasColumnName("user_id")
-                        .HasColumnType("char(36)");
 
                     b.HasKey("Id")
                         .HasName("pk_stored_queries");
-
-                    b.HasIndex("UserId")
-                        .HasName("ix_stored_queries_user_id");
 
                     b.ToTable("stored_queries");
                 });
@@ -408,7 +413,8 @@ namespace Repositories.Migrations
                     b.HasOne("COLID.AppDataService.Common.DataModel.User", "User")
                         .WithMany("ColidEntrySubscriptions")
                         .HasForeignKey("UserId")
-                        .HasConstraintName("fk_colid_entry_subscriptions_users_user_id");
+                        .HasConstraintName("fk_colid_entry_subscriptions_users_user_id")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("COLID.AppDataService.Common.DataModel.Message", b =>
@@ -430,19 +436,16 @@ namespace Repositories.Migrations
 
             modelBuilder.Entity("COLID.AppDataService.Common.DataModel.SearchFilterDataMarketplace", b =>
                 {
+                    b.HasOne("COLID.AppDataService.Common.DataModel.StoredQuery", "StoredQuery")
+                        .WithOne("SearchFilterDataMarketplace")
+                        .HasForeignKey("COLID.AppDataService.Common.DataModel.SearchFilterDataMarketplace", "StoredQueryId")
+                        .HasConstraintName("fk_search_filter_data_marketplace_stored_queries_stored_query_id")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("COLID.AppDataService.Common.DataModel.User", "User")
                         .WithMany("SearchFiltersDataMarketplace")
                         .HasForeignKey("UserId")
                         .HasConstraintName("fk_search_filter_data_marketplace_users_user_id")
-                        .OnDelete(DeleteBehavior.Cascade);
-                });
-
-            modelBuilder.Entity("COLID.AppDataService.Common.DataModel.StoredQuery", b =>
-                {
-                    b.HasOne("COLID.AppDataService.Common.DataModel.User", "User")
-                        .WithMany("StoredQueries")
-                        .HasForeignKey("UserId")
-                        .HasConstraintName("fk_stored_queries_users_user_id")
                         .OnDelete(DeleteBehavior.Cascade);
                 });
 
@@ -458,7 +461,7 @@ namespace Repositories.Migrations
                         .WithMany("Users")
                         .HasForeignKey("SearchFilterEditorId")
                         .HasConstraintName("fk_users_search_filters_editor_search_filter_editor_id")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 #pragma warning restore 612, 618
         }

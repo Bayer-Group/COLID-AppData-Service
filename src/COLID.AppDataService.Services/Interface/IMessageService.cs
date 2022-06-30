@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using COLID.AppDataService.Common.DataModel;
 using COLID.AppDataService.Common.DataModels.TransferObjects;
-using COLID.AppDataService.Common.Exceptions;
 using Common.DataModels.TransferObjects;
 
 namespace COLID.AppDataService.Services.Interface
@@ -11,7 +10,7 @@ namespace COLID.AppDataService.Services.Interface
     /// <summary>
     /// Service to handle all message related operations.
     /// </summary>
-    public interface IMessageService : IGenericService<Message, int>
+    public interface IMessageService : IServiceBase<Message>
     {
         /// <summary>
         /// This function will create messages for all users, that subscribed to the colid pid uri,
@@ -50,5 +49,40 @@ namespace COLID.AppDataService.Services.Interface
         /// </summary>
         IList<MessageUserDto> GetUnreadMessagesToSend();
 
+        /// <summary>
+        /// The method checks for which messages in the database the conditions for deleting the message exist.
+        /// The conditions are that both the deletion date is reached and that the send or read date is not empty.
+        /// </summary>
+        void DeleteExpiredMessages();
+
+        /// <summary>
+        /// Sends a given Message to all users.
+        /// <param name="message">Message dto containing subject and Body of the message to send</param>
+        /// </summary>
+        void SendMessageToAllUsers(BroadcastMessageDto message);
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="distributionEndpoints"></param>
+        void DeleteByAdditionalInfo(List<Uri> distributionEndpoints);
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="distributionEndpoints"></param>
+        List<(Uri, DateTime)> GetByAdditionalInfo(List<Uri> distributionEndpoints);
+
+        /// <summary>
+        /// Used to notify user about invalid distribution endpoint
+        /// </summary>
+        /// <param name="message">message contain message text, email address and other information required to send email</param>
+        void SendMessageToUser(DistributionEndpointMessageDto message);
+
+        /// <summary>
+        /// Send generic message to user
+        /// </summary>
+        /// <param name="message">Message to be sent</param>
+        void SendGenericMessageToUser(MessageUserDto message);
     }
 }

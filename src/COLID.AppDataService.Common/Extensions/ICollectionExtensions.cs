@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using COLID.AppDataService.Common.DataModel;
 using Microsoft.EntityFrameworkCore.Internal;
 
 namespace COLID.AppDataService.Common.Extensions

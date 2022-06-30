@@ -3,7 +3,6 @@ using COLID.AppDataService.Common.Constants;
 using COLID.AppDataService.Services.Interface;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
 namespace COLID.AppDataService.Controllers
 {
@@ -14,12 +13,8 @@ namespace COLID.AppDataService.Controllers
     {
         private readonly IWelcomeMessageService _wmService;
 
-        private readonly ILogger<WelcomeMessagesController> _logger;
-
-        public WelcomeMessagesController(ILogger<WelcomeMessagesController> logger,
-            IWelcomeMessageService welcomeMessageService)
+        public WelcomeMessagesController(IWelcomeMessageService welcomeMessageService)
         {
-            _logger = logger;
             _wmService = welcomeMessageService;
         }
 

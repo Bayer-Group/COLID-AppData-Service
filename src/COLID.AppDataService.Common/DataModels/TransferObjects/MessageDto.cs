@@ -21,5 +21,7 @@ namespace COLID.AppDataService.Common.DataModels.TransferObjects
 
         // When the message should be deleted
         public DateTime? DeleteOn { get; set; }
+
+        public string AdditionalInfo { get; set; }
     }
 }

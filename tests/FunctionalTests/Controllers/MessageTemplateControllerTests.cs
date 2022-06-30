@@ -87,7 +87,7 @@ namespace COLID.AppDataService.Tests.Functional.Controllers
                 .FirstOrDefault(x => MessageType.StoredQueryResult.Equals(x.Type));
 
             _seeder.ResetMessageTemplates();
-            var response = await Client.GetAsync($"{PATH}/{(int) MessageType.StoredQueryResult}");
+            var response = await Client.GetAsync($"{PATH}/{(int)MessageType.StoredQueryResult}");
             var stringResponse = await response.Content.ReadAsStringAsync();
             _output.WriteLine(stringResponse);
             response.EnsureSuccessStatusCode();

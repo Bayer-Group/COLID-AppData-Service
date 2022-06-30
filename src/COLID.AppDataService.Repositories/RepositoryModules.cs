@@ -19,13 +19,7 @@ namespace COLID.AppDataService.Repositories
                 throw new ArgumentNullException(nameof(services));
             }
 
-            services.AddTransient<IColidEntrySubscriptionRepository, ColidEntrySubscriptionRepository>();
-            services.AddTransient<IConsumerGroupRepository, ConsumerGroupRepository>();
-            services.AddTransient(typeof(IGenericRepository<,>), typeof(GenericRepository<,>));
-            services.AddTransient<IMessageRepository, MessageRepository>();
-            services.AddTransient<IMessageTemplateRepository, MessageTemplateRepository>();
-            services.AddTransient<IUserRepository, UserRepository>();
-            services.AddTransient<IWelcomeMessageRepository, WelcomeMessageRepository>();
+            services.AddTransient<IGenericRepository, GenericRepository>();
 
             return services;
         }

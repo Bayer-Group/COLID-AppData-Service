@@ -15,51 +15,32 @@ namespace COLID.AppDataService.Tests.Unit.Builder
             _entity = new StoredQuery();
         }
 
-        public StoredQueryBuilder WithQueryName(string queryName)
-        {
-            _entity.QueryName = queryName;
-            return this;
-        }
-
-        public StoredQueryBuilder WithQueryJson(JObject jObject)
-        {
-            _entity.QueryJson = jObject;
-            return this;
-        }
-
-        public StoredQueryBuilder WithQueryJson(string jsonString)
-        {
-            _entity.QueryJson = JObject.Parse(jsonString);
-            return this;
-        }
-
         public StoredQueryBuilder WithExecutionInterval(ExecutionInterval execInterval)
         {
             _entity.ExecutionInterval = execInterval;
             return this;
         }
 
-        public StoredQueryBuilder WithLastExecutionResult(JObject jObject)
+        public StoredQueryBuilder WithSearchResultHash(string hash)
         {
-            _entity.LastExecutionResult = jObject;
+            _entity.SearchResultHash = hash;
             return this;
         }
 
-        public StoredQueryBuilder WithLastExecutionResult(string jsonString)
+        public StoredQueryBuilder WithlatestExecutionDate(DateTime date)
         {
-            _entity.LastExecutionResult = JObject.Parse(jsonString);
+            _entity.LatestExecutionDate = date;
+            return this;
+        }
+        public StoredQueryBuilder WithSearchNumberResult(int numResults)
+        {
+            _entity.NumberSearchResults = numResults;
             return this;
         }
 
-        public StoredQueryBuilder WithNextExecutionAt(DateTime date)
+        public StoredQueryBuilder WithSearchFilterDataMarketplace(SearchFilterDataMarketplace SearchFilterDataMarketplace)
         {
-            _entity.NextExecutionAt = date;
-            return this;
-        }
-
-        public StoredQueryBuilder WithUser(User user)
-        {
-            _entity.User = user;
+            _entity.SearchFilterDataMarketplace = SearchFilterDataMarketplace;
             return this;
         }
     }

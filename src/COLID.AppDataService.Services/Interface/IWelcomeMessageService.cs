@@ -5,7 +5,7 @@ namespace COLID.AppDataService.Services.Interface
     /// <summary>
     /// Service to handle all welcome message related operations.
     /// </summary>
-    public interface IWelcomeMessageService : IGenericService<WelcomeMessage, int>
+    public interface IWelcomeMessageService : IServiceBase<WelcomeMessage>
     {
         /// <summary>
         /// Fetches the welcome message for editor.

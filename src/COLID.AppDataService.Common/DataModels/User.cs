@@ -4,11 +4,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace COLID.AppDataService.Common.DataModel
 {
-    public class User : Entity<Guid>
+    public class User : EntityBase<Guid>
     {
-        [Key]
-        public override Guid Id { get; set; }
-
         public string EmailAddress { get; set; }
 
         [DataType(DataType.Date)]
@@ -28,8 +25,6 @@ namespace COLID.AppDataService.Common.DataModel
         public virtual int? DefaultSearchFilterDataMarketplace { get; set; }
 
         public virtual ICollection<SearchFilterDataMarketplace> SearchFiltersDataMarketplace { get; set; }
-
-        public virtual ICollection<StoredQuery> StoredQueries { get; set; }
 
         public virtual ICollection<ColidEntrySubscription> ColidEntrySubscriptions { get; set; }
 

@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using COLID.AppDataService.Common.DataModel;
 using COLID.AppDataService.Common.DataModels.TransferObjects;
 using COLID.AppDataService.Common.Exceptions;
+using COLID.AppDataService.Common.Search;
 using Newtonsoft.Json.Linq;
 
 namespace COLID.AppDataService.Services.Interface
@@ -11,8 +12,10 @@ namespace COLID.AppDataService.Services.Interface
     /// <summary>
     /// Service to handle all user related operations.
     /// </summary>
-    public interface IUserService : IGenericService<User, Guid>
+    public interface IUserService : IServiceBase<User>
     {
+        Task<User> GetOneAsync(Guid userId);
+
         /// <summary>
         /// Create a new user from the given dto.
         /// </summary>
@@ -46,6 +49,39 @@ namespace COLID.AppDataService.Services.Interface
         /// <param name="userId">the referencing user to update</param>
         /// <exception cref="EntityNotFoundException">in case that no user or consumer group was found for the given id</exception>
         Task<ConsumerGroup> GetDefaultConsumerGroupAsync(Guid userId);
+
+        /// <summary>
+        /// Process all users stored queries which execution date has expired
+        /// </summary>
+        /// <exception cref="EntityNotChangedException">in case that the storedquery couldn't be updated</exception>
+        Task ProcessStoredQueries();
+
+        /// <summary>
+        /// Checks if a stored query's due date has been reached
+        /// </summary>
+        bool StoredQueryNeedsToBeEvaluated(StoredQuery storedQuery);
+
+        /// <summary>
+        /// Gets a List of all Pid Uris which have been created or updated since last stored query execution date
+        /// </summary>
+        List<string> GetUpdatedResources(List<SearchHit> hits, StoredQuery storedQuery);
+
+        /// <summary>
+        /// Performs a search for a given searchfilterDataMarketplace object in the searchservice
+        /// </summary>  
+        /// <exception cref="AuthenticationException">in case the token couldnt be validated</exception>
+        /// <exception cref="HttpRequestException">in case the connection to the remote search service couldn't be established</exception>
+        Task<SearchResultDTO> GetElasticSearchResult(SearchFilterDataMarketplace searchfilter);
+        
+        /// <summary>
+        /// Notify user about created or updated resources since last execution of their storedquery
+        /// </summary>  
+        Task NotifyUserAboutUpdates(SearchFilterDataMarketplace sf, List<string> newPids);
+
+        /// <summary>
+        /// Create Hash for a given elasticsearch search result
+        /// </summary>  
+        string GetHashOfSearchResults(SearchResultDTO searchResult);
 
         /// <summary>
         /// Update the default consumer group value for the user, that matches with the given id.
@@ -155,15 +191,7 @@ namespace COLID.AppDataService.Services.Interface
         Task<ICollection<SearchFilterDataMarketplace>> GetSearchFiltersDataMarketplaceAsync(Guid userId);
 
         /// <summary>
-        /// Updates the data marketplace search filter value for the user, that matches with the given id..
-        /// </summary>
-        /// <param name="userId">the referencing user to update</param>
-        /// <param name="dataMarketplaceFilters">the search filter to set for data marketplace</param>
-        /// <exception cref="EntityNotFoundException">in case that no user was found for the given id</exception>
-        Task<User> UpdateSearchFiltersDataMarketplaceAsync(Guid userId, ICollection<SearchFilterDataMarketplace> dataMarketplaceFilters);
-
-        /// <summary>
-        /// Remove all data marketplace search filters for the user, that matches with the given id.
+        /// Remove all data marketplace search filters for the user, that matches with the given data marker search filter id.
         /// </summary>
         /// <param name="userId">the referencing user to update</param>
         /// <param name="searchFilterId">the referencing search filter to remove</param>
@@ -171,13 +199,33 @@ namespace COLID.AppDataService.Services.Interface
         Task<User> RemoveSearchFilterDataMarketplaceAsync(Guid userId, int searchFilterId);
 
         /// <summary>
-        /// Updates the colid resource subscription value for the user that matches with the given id.
+        /// Get all subscribed data marketplace search filters of the user with the given Id.
         /// </summary>
         /// <param name="userId">the referencing user to update</param>
-        /// <param name="colidEntrySubscriptions">the colid resource subscription to set</param>
-        /// <exception cref="EntityNotFoundException">in case that no user was found for the given id</exception>
-        Task UpdateColidEntrySubscriptionsAsync(Guid userId, ICollection<ColidEntrySubscription> colidEntrySubscriptions);
+        /// <exception cref="EntityNotFoundException">in case that no user or search filters were found</exception>
+        Task<ICollection<SearchFilterDataMarketplace>> GetSearchFiltersDataMarketplaceOnlyWithStoredQueriesAsync(Guid userId);
 
+        /// <summary>
+        /// Subscribe to a specific data marketplace search filter of the user with the given query settings.
+        /// </summary>
+        /// <param name="userId">the referencing user to update</param>
+        /// <param name="storedQueryDto">Stored Query parameter</param>
+        /// <exception cref="EntityNotFoundException">in case that no user or search filters were found</exception>
+        Task<SearchFilterDataMarketplace> AddStoredQueryToSearchFiltersDataMarketplaceAync(Guid userId, StoredQueryDto storedQueryDto);
+
+        /// <summary>
+        /// Remove a subscription of a specific data marketplace search filter of the user.
+        /// </summary>
+        /// <param name="userId">the referencing user to update</param>
+        /// <param name="SearchFilterDataMarketplaceId">Stored Query parameter</param>
+        /// <exception cref="EntityNotFoundException">in case that no user or search filters were found</exception>
+        Task<SearchFilterDataMarketplace> RemoveStoredQueryFromSearchFiltersDataMarketplaceAync(Guid userId, int SearchFilterDataMarketplaceId);
+
+        /// <summary>
+        /// Get all subscribed data market search filter of all users.
+        /// </summary>
+        Task<ICollection<User>> GetAllSearchFiltersDataMarketplaceOnlyWithStoredQueriesAsync();
+        
         /// <summary>
         /// Get all user related subscription on COLID entries. The user will be identified by the given ID.
         /// </summary>
@@ -225,13 +273,20 @@ namespace COLID.AppDataService.Services.Interface
         Task<User> UpdateMessageConfigAsync(Guid userId, MessageConfigDto messageConfigDto);
 
         /// <summary>
-        /// Add a new message to the user, identified by the given id.
+        /// Add a new message to the user asynchronously, identified by the given id.
         /// </summary>
         /// <param name="userId">The user to search for</param>
         /// <param name="messageDto">the message to create as dto</param>
         /// <exception cref="ArgumentNullException">if the userId or dto is null</exception>
         /// <exception cref="EntityNotFoundException">in case that no user was found for the given id</exception>
         Task<User> AddMessageAsync(Guid userId, MessageDto messageDto);
+
+        /// <summary>
+        /// Add a new message to the user, identified by the given id.
+        /// </summary>
+        /// <param name="userId">The user to search for</param>
+        /// <param name="message">the message to create as Dto</param>
+        User AddMessage(Guid userId, MessageDto message);
 
         /// <summary>
         /// Delete a message to the user, identified by the given id.
@@ -294,13 +349,5 @@ namespace COLID.AppDataService.Services.Interface
         /// <exception cref="ArgumentNullException">if the userId is null</exception>
         /// <exception cref="EntityNotFoundException">in case that no user or message was found for the given ids</exception>
         Task<MessageDto> MarkMessageAsSentAsync(Guid userId, int messageId);
-
-        /// <summary>
-        /// Updates the stored queries value for the user, that matches with the given id.
-        /// </summary>
-        /// <param name="userId">the referencing user to update</param>
-        /// <param name="storedQueries">the stored queries to set</param>
-        /// <exception cref="EntityNotFoundException">in case that no user was found for the given id</exception>
-        void UpdateStoredQueriesAsync(Guid userId, ICollection<StoredQuery> storedQueries);
     }
 }

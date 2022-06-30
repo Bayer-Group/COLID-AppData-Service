@@ -8,22 +8,19 @@ using Newtonsoft.Json.Linq;
 
 namespace COLID.AppDataService.Common.DataModel
 {
-    public class StoredQuery : Entity<int>
+    public class StoredQuery : EntityBase<int>
     {
-        public string QueryName { get; set; }
-
-        public JObject QueryJson { get; set; }
+        public virtual SearchFilterDataMarketplace SearchFilterDataMarketplace { get; set; }
 
         [JsonConverter(typeof(StringEnumConverter))]
         public ExecutionInterval ExecutionInterval { get; set; }
 
-        public JObject LastExecutionResult { get; set; }
+        public int NumberSearchResults { get; set; }
+
+        public string SearchResultHash { get; set; }
 
         [DataType(DataType.Date)]
-        public DateTime? NextExecutionAt { get; set; }
+        public DateTime? LatestExecutionDate { get; set; }
 
-        [JsonIgnore]
-        [ForeignKey("UserId")]
-        public virtual User User { get; set; }
     }
 }

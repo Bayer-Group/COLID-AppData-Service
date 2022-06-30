@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Text;
 using System.Threading.Tasks;
 using COLID.AppDataService.Common.DataModel;
-using COLID.AppDataService.Common.Exceptions;
 using COLID.AppDataService.Common.Extensions;
 using COLID.AppDataService.Common.Utilities;
 using COLID.AppDataService.Repositories.Context;
@@ -14,180 +14,265 @@ using Microsoft.EntityFrameworkCore;
 
 namespace COLID.AppDataService.Repositories.Implementation
 {
-    public class GenericRepository<TEntityType, TIdType> : IGenericRepository<TEntityType, TIdType>
-        where TEntityType : Entity<TIdType>
+    public class GenericRepository : IGenericRepository
     {
-        protected AppDataContext Context { get; }
-
-        protected List<Expression<Func<TEntityType, object>>> Includes { get; } = new List<Expression<Func<TEntityType, object>>>();
+        protected readonly AppDataContext _context;
 
         public GenericRepository(AppDataContext context)
         {
-            Guard.IsNotNull(context);
-            Context = context;
+            _context = context;
         }
 
-        protected virtual void AddInclude(Expression<Func<TEntityType, object>> includeExpression)
+        protected virtual IQueryable<TEntity> GetQueryable<TEntity>(
+            Expression<Func<TEntity, bool>> filter = null,
+            Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>> orderBy = null,
+            string includeProperties = null,
+            int? skip = null,
+            int? take = null,
+            bool readOnly = false) where TEntity : class, IEntity
         {
-            Guard.IsNotNull(includeExpression);
-            Includes.Add(includeExpression);
-        }
+            includeProperties ??= string.Empty;
 
-        public IQueryable<TEntityType> FindAll(bool tracked = false)
-        {
-            var queryable = Context.Set<TEntityType>();
-            return tracked ? queryable : queryable.AsNoTracking();
-        }
+            IQueryable<TEntity> query = _context.Set<TEntity>();
 
-        public IQueryable<TEntityType> FindByCondition(Expression<Func<TEntityType, bool>> expression, bool tracked = false)
-        {
-            Guard.IsNotNull(expression);
-            var queryable = Context.Set<TEntityType>().Where(expression);
-            return tracked ? queryable : queryable.AsNoTracking();
-        }
-
-        #region [Synchronous calls]
-
-        public IEnumerable<TEntityType> GetAll(bool tracked = false)
-        {
-            return Includes
-                .Aggregate(FindAll(tracked), (current, include) => current.Include(include))
-                .ToList();
-        }
-
-        public TEntityType GetOne(TIdType id, bool tracked = false)
-        {
-            Guard.IsNotNull(id);
-            var resByCondition = FindByCondition(entity => entity.Id.Equals(id), tracked);
-            var result = Includes
-                .Aggregate(resByCondition, (current, include) => current.Include(include))
-                .SingleOrDefault();
-
-            if (result.IsEmpty())
+            if (filter != null)
             {
-                throw new EntityNotFoundException($"Unable to find {typeof(TEntityType).Name} with id {id}", id.ToString());
+                query = query.Where(filter);
             }
 
-            return result;
-        }
-
-        public bool TryGetOne(TIdType id, out TEntityType entity, bool tracked = false)
-        {
-            Guard.IsNotNull(id);
-            entity = FindByCondition(e => e.Id.Equals(id), tracked).SingleOrDefault();
-            return entity.IsNotEmpty();
-        }
-
-        public bool Exists(TIdType id)
-        {
-            Guard.IsNotNull(id);
-            return FindByCondition(e => e.Id.Equals(id))
-                .SingleOrDefault()
-                .IsNotEmpty();
-        }
-
-        public TEntityType Create(TEntityType entity)
-        {
-            Guard.IsNotNull(entity);
-            var res = Context.Set<TEntityType>().Add(entity);
-            Save();
-            return res.Entity;
-        }
-
-        public TEntityType Update(TEntityType entity)
-        {
-            Guard.IsNotNull(entity);
-            var res = Context.Set<TEntityType>().Update(entity);
-            Save();
-            return res.Entity;
-        }
-
-        public TEntityType UpdateReference(TEntityType entity, Expression<Func<TEntityType, EntityBase>> referenceToUpdate)
-        {
-            Guard.IsNotNull(entity, referenceToUpdate);
-            var res = Context.Set<TEntityType>().Update(entity);
-            Context.Entry(entity).Reference(referenceToUpdate).IsModified = true;
-            Save();
-            return res.Entity;
-        }
-
-        public TEntityType UpdateCollectionReference(TEntityType entity, Expression<Func<TEntityType, IEnumerable<EntityBase>>> collectionReferenceToUpdate)
-        {
-            Guard.IsNotNull(entity, collectionReferenceToUpdate);
-            var res = Context.Set<TEntityType>().Update(entity);
-            Context.Entry(entity).Collection(collectionReferenceToUpdate).IsModified = true;
-            Save();
-            return res.Entity;
-        }
-
-        public void Delete(TEntityType entity)
-        {
-            Guard.IsNotNull(entity);
-            Context.Set<TEntityType>().Remove(entity);
-            Save();
-        }
-
-        public void DeleteRange(ICollection<TEntityType> entities)
-        {
-            Guard.IsNotNullOrEmpty(entities);
-            Context.Set<TEntityType>().RemoveRange(entities);
-            Save();
-        }
-
-        public void Save()
-        {
-            Context.SaveChanges();
-        }
-
-        #endregion [Synchronous calls]
-
-        #region [Asynchron calls]
-
-        public async Task<IEnumerable<TEntityType>> GetAllAsync(bool tracked = false)
-        {
-            return await Includes
-                .Aggregate(FindAll(tracked), (current, include) => current.Include(include))
-                .ToListAsync();
-        }
-
-        public async Task<TEntityType> GetOneAsync(TIdType id, bool tracked = false)
-        {
-            Guard.IsNotNull(id);
-            var resByCondition = FindByCondition(entity => entity.Id.Equals(id), tracked);
-            var result = await Includes
-                .Aggregate(resByCondition, (current, include) => current.Include(include))
-                .SingleOrDefaultAsync(); // To force only one result
-
-            if (result.IsEmpty())
+            foreach (var includeProperty in includeProperties.Split(',', StringSplitOptions.RemoveEmptyEntries))
             {
-                throw new EntityNotFoundException($"{typeof(TEntityType).Name} with id {id} does not exist.");
+                query = query.Include(includeProperty);
             }
 
-            return result;
+            if (orderBy != null)
+            {
+                query = orderBy(query);
+            }
+
+            if (skip.HasValue)
+            {
+                query = query.Skip(skip.Value);
+            }
+
+            if (take.HasValue)
+            {
+                query = query.Take(take.Value);
+            }
+
+            if (readOnly)
+                query = query.AsNoTracking();
+
+            return query;
         }
 
-        public async Task<bool> ExistsAsync(TIdType id)
+        public virtual IEnumerable<TEntity> GetAll<TEntity>(
+          Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>> orderBy = null,
+          string includeProperties = null,
+          int? skip = null,
+          int? take = null,
+          bool readOnly = false) where TEntity : class, IEntity
         {
-            Guard.IsNotNull(id);
-            var entity = await FindByCondition(e => e.Id.Equals(id))
-                .SingleOrDefaultAsync();
-            var exists = entity.IsNotEmpty();
-            return exists;
+            return GetQueryable(null, orderBy, includeProperties, skip, take, readOnly).ToList();
         }
 
-        public async Task<TEntityType> CreateAsync(TEntityType entity)
+        public virtual async Task<IEnumerable<TEntity>> GetAllAsync<TEntity>(
+            Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>> orderBy = null,
+            string includeProperties = null,
+            int? skip = null,
+            int? take = null,
+            bool readOnly = false) where TEntity : class, IEntity
         {
-            Guard.IsNotNull(entity);
-            await Context.Set<TEntityType>().AddAsync(entity);
-            await SaveAsync();
+            return await GetQueryable(null, orderBy, includeProperties, skip, take, readOnly).ToListAsync();
+        }
+
+        public virtual IEnumerable<TEntity> Get<TEntity>(
+            Expression<Func<TEntity, bool>> filter = null,
+            Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>> orderBy = null,
+            string includeProperties = null,
+            int? skip = null,
+            int? take = null,
+            bool readOnly = false) where TEntity : class, IEntity
+        {
+            var entities = GetQueryable(filter, orderBy, includeProperties, skip, take, readOnly).ToList();
+            if (entities.IsNullOrEmpty())
+            {
+                throw new EntityNotFoundException($"Unable to find {typeof(TEntity).Name}s to the given parameters", string.Empty);
+            }
+
+            return entities;
+        }
+
+        public virtual async Task<IEnumerable<TEntity>> GetAsync<TEntity>(
+            Expression<Func<TEntity, bool>> filter = null,
+            Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>> orderBy = null,
+            string includeProperties = null,
+            int? skip = null,
+            int? take = null,
+            bool readOnly = false) where TEntity : class, IEntity
+        {
+            var entities = await GetQueryable(filter, orderBy, includeProperties, skip, take, readOnly).ToListAsync();
+            if (entities.IsNullOrEmpty())
+            {
+                throw new EntityNotFoundException($"Unable to find {typeof(TEntity).Name}s to the given parameters", string.Empty);
+            }
+
+            return entities;
+        }
+
+        public virtual TEntity GetOne<TEntity>(
+            Expression<Func<TEntity, bool>> filter = null,
+            string includeProperties = "",
+            bool readOnly = false) where TEntity : class, IEntity
+        {
+            var entity = GetQueryable(filter, null, includeProperties, null, null, readOnly).SingleOrDefault();
+            if (entity.IsEmpty())
+            {
+                throw new EntityNotFoundException($"Unable to find a {typeof(TEntity).Name} to the given parameters", string.Empty);
+            }
+
             return entity;
         }
 
-        public async Task SaveAsync()
+        public virtual async Task<TEntity> GetOneAsync<TEntity>(
+            Expression<Func<TEntity, bool>> filter = null,
+            string includeProperties = null,
+            bool readOnly = false) where TEntity : class, IEntity
         {
-            await Context.SaveChangesAsync();
+            var entity = await GetQueryable(filter, null, includeProperties, null, null, readOnly).SingleOrDefaultAsync();
+            if (entity.IsEmpty())
+            {
+                throw new EntityNotFoundException($"Unable to find a {typeof(TEntity).Name} to the given parameters", string.Empty);
+            }
+
+            return entity;
         }
 
-        #endregion [Asynchron calls]
+        public virtual bool TryGetOne<TEntity>(
+            out TEntity entity,
+            Expression<Func<TEntity, bool>> filter = null,
+            string includeProperties = null,
+            bool readOnly = false) where TEntity : class, IEntity
+        {
+            entity = null;
+            try
+            {
+                entity = GetOne(filter, includeProperties, readOnly);
+            }
+            catch (EntityNotFoundException)
+            {
+                // ingore this exception
+            }
+
+            return entity.IsNotEmpty();
+        }
+
+        public virtual TEntity GetById<TEntity>(object id) where TEntity : class, IEntity
+        {
+            Guard.IsNotNull(id);
+            var entity = _context.Set<TEntity>().Find(id);
+            if (entity.IsEmpty())
+            {
+                throw new EntityNotFoundException($"Unable to find a {typeof(TEntity).Name} to the given id", id.ToString());
+            }
+
+            return entity;
+        }
+
+        public virtual async ValueTask<TEntity> GetByIdAsync<TEntity>(object id) where TEntity : class, IEntity
+        {
+            Guard.IsNotNull(id);
+            var entity = await _context.Set<TEntity>().FindAsync(id);
+            if (entity.IsEmpty())
+            {
+                throw new EntityNotFoundException($"Unable to find a {typeof(TEntity).Name} to the given id", id.ToString());
+            }
+
+            return entity;
+        }
+
+        public virtual int GetCount<TEntity>(Expression<Func<TEntity, bool>> filter = null) where TEntity : class, IEntity
+        {
+            const bool readOnly = true;
+            return GetQueryable(filter,null, null, null, null, readOnly).Count();
+        }
+
+        public virtual Task<int> GetCountAsync<TEntity>(Expression<Func<TEntity, bool>> filter = null) where TEntity : class, IEntity
+        {
+            const bool readOnly = true;
+            return GetQueryable(filter, null, null, null, null, readOnly).CountAsync();
+        }
+
+        public virtual bool GetExists<TEntity>(Expression<Func<TEntity, bool>> filter = null) where TEntity : class, IEntity
+        {
+            const bool readOnly = true;
+            return GetQueryable(filter, null, null, null, null, readOnly).Any();
+        }
+
+        public virtual Task<bool> GetExistsAsync<TEntity>(Expression<Func<TEntity, bool>> filter = null) where TEntity : class, IEntity
+        {
+            const bool readOnly = true;
+            return GetQueryable(filter, null, null, null, null, readOnly).AnyAsync();
+        }
+
+        public virtual void Create<TEntity>(TEntity entity) where TEntity : class, IEntity
+        {
+            Guard.IsNotNull(entity);
+            _context.Set<TEntity>().Add(entity);
+        }
+
+        public virtual void Update<TEntity>(TEntity entity) where TEntity : class, IEntity
+        {
+            Guard.IsNotNull(entity);
+            _context.Set<TEntity>().Attach(entity);
+            _context.Entry(entity).State = EntityState.Modified;
+        }
+
+        public virtual void Delete<TEntity>(object id) where TEntity : class, IEntity
+        {
+            Guard.IsNotNull(id);
+            var result = _context.Set<TEntity>().Find(id);
+            if (result.IsEmpty())
+            {
+                throw new EntityNotFoundException($"Unable to delete a {typeof(TEntity).Name} to the given id, because it doesn't exist", id.ToString());
+            }
+
+            Delete(result);
+        }
+
+        public virtual void Delete<TEntity>(TEntity entity) where TEntity : class, IEntity
+        {
+            Guard.IsNotNull(entity);
+            var dbSet = _context.Set<TEntity>();
+            if (_context.Entry(entity).State == EntityState.Detached)
+            {
+                dbSet.Attach(entity);
+            }
+            dbSet.Remove(entity);
+        }
+
+        public virtual void DeleteRange<TEntity>(IEnumerable<TEntity> entities) where TEntity : class, IEntity
+        {
+            Guard.IsNotNullOrEmpty(entities);
+            var dbSet = _context.Set<TEntity>();
+            var enumerable = entities.ToList();
+            foreach (var entity in enumerable
+                .Where(entity => _context.Entry(entity).State == EntityState.Detached))
+            {
+                dbSet.Attach(entity);
+            }
+
+            dbSet.RemoveRange(enumerable);
+        }
+
+        public virtual void Save()
+        {
+            _context.SaveChanges();
+        }
+
+        public virtual Task SaveAsync()
+        {
+            return _context.SaveChangesAsync();
+        }
     }
 }

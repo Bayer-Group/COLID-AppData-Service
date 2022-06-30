@@ -3,7 +3,7 @@ using COLID.AppDataService.Common.DataModel;
 
 namespace COLID.AppDataService.Tests.Unit.Builder
 {
-    public abstract class EntityBuilderBase<TBuilder, TEntityType, TDtoType, TIdType> where TEntityType : Entity<TIdType>, new()
+    public abstract class EntityBuilderBase<TBuilder, TEntityType, TDtoType, TIdType> where TEntityType : EntityBase<TIdType>, new()
     {
         protected TEntityType _entity;
 

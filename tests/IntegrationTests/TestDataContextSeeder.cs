@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using COLID.AppDataService.Common.DataModel;
-using COLID.AppDataService.Common.Exceptions;
+using COLID.AppDataService.Common.Enums;
 using COLID.AppDataService.Common.Utilities;
 using COLID.AppDataService.Repositories.Context;
 using COLID.AppDataService.Tests.Unit;
@@ -21,7 +21,6 @@ namespace COLID.AppDataService.Tests.Integration
         public static IEnumerable<StoredQuery> StoredQueryList = TestData.GetPreconfiguredStoredQueries();
         public static IEnumerable<ColidEntrySubscription> ColidEntrySubscriptionList = TestData.GetPreconfiguredColidEntrySubscriptions();
         public static IEnumerable<MessageTemplate> MessageTemplateList = TestData.GetPreconfiguredMessageTemplates();
-        public static IEnumerable<MessageConfig> UserMessageConfigList = TestData.GetPreconfiguredUserMessageConfigs();
         public static IEnumerable<WelcomeMessage> WelcomeMessageList = TestData.GetPreconfiguredWelcomeMessages();
 
         private readonly DbContextOptions<AppDataContext> _dbOptions;
@@ -41,7 +40,6 @@ namespace COLID.AppDataService.Tests.Integration
             SeedStoredQueries();
             SeedColidEntrySubscriptions();
             SeedMessageTemplates();
-            SeedUserMessageConfig();
             SeedWelcomeMessages();
 
             SeedOthers();
@@ -50,6 +48,15 @@ namespace COLID.AppDataService.Tests.Integration
         public void SeedUsers()
         {
             Seed(UserList);
+        }
+
+        public void AssignMessageConfigToAllUsers()
+        {
+            foreach (var user in UserList)
+            {
+                AssignMessageConfigToUsers(user,
+                    new MessageConfig {SendInterval = SendInterval.Weekly, DeleteInterval = DeleteInterval.Monthly});
+            }
         }
 
         public void ClearUsers()
@@ -112,10 +119,20 @@ namespace COLID.AppDataService.Tests.Integration
             Seed(ColidEntrySubscriptionList);
         }
 
+        public void ClearMessages()
+        {
+            Remove<Message>();
+        }
+
         public void ResetColidEntrySubscriptions()
         {
             Remove<ColidEntrySubscription>();
             Seed(ColidEntrySubscriptionList);
+        }
+
+        public void ClearColidEntrySubscriptions()
+        {
+            Remove<ColidEntrySubscription>();
         }
 
         public void SeedMessageTemplates()
@@ -133,18 +150,6 @@ namespace COLID.AppDataService.Tests.Integration
             Remove<MessageTemplate>();
             Seed(MessageTemplateList);
         }
-
-        public void SeedUserMessageConfig()
-        {
-            Seed(UserMessageConfigList);
-        }
-
-        public void ResetUserMessageConfig()
-        {
-            Remove<MessageConfig>();
-            Seed(UserMessageConfigList);
-        }
-
         public void SeedWelcomeMessages()
         {
             Seed(WelcomeMessageList);
@@ -177,7 +182,13 @@ namespace COLID.AppDataService.Tests.Integration
             dbUser.SearchFiltersDataMarketplace.Add(sf);
             return UpdateAndSaveUser(context, dbUser);
         }
-
+        public User AppendStoredQueryToSearchFilterDataMarketplace(User user,SearchFilterDataMarketplace sf, StoredQuery sq)
+        {
+            using var context = new AppDataContext(_dbOptions);
+            var searchfilter = user.SearchFiltersDataMarketplace.Where(x=>x.Id==sf.Id).FirstOrDefault();
+            searchfilter.StoredQuery = sq;
+            return UpdateAndSaveUser(context, user);
+        }
         public User SetDefaultSearchFilterDataMarketplaceToUser(int sfId, User user)
         {
             using var context = new AppDataContext(_dbOptions);
@@ -230,10 +241,19 @@ namespace COLID.AppDataService.Tests.Integration
             return dbEntity.Entity;
         }
 
-        public IList<TEntity> GetAll<TEntity>() where TEntity : class
+        public IList<TEntity> GetAll<TEntity>(string includeProperties = null) where TEntity : class
         {
             using var context = new AppDataContext(_dbOptions);
-            return context.Set<TEntity>().ToList();
+            IQueryable<TEntity> query = context.Set<TEntity>();
+
+            includeProperties ??= string.Empty;
+
+            foreach (var includeProperty in includeProperties.Split(',', StringSplitOptions.RemoveEmptyEntries))
+            {
+                query = query.Include(includeProperty);
+            }
+
+            return query.ToList();
         }
 
         // =========================================
@@ -266,7 +286,7 @@ namespace COLID.AppDataService.Tests.Integration
             var dbSet = context.Set<TEntity>();
             if (dbSet.Any())
             {
-                var entities = dbSet.AsNoTracking().ToList();
+                var entities = dbSet.ToList();
                 dbSet.RemoveRange(entities);
                 context.SaveChanges();
             }
@@ -301,9 +321,10 @@ namespace COLID.AppDataService.Tests.Integration
             var searchFilterDataMarketplaceList = context.SearchFilterDataMarketplace.ToList();
             var storedQueriesList = context.StoredQueries.ToList();
             var colidEntrySubscriptionList = context.ColidEntrySubscriptions.ToList();
-            var userMessageConfigList = context.MessageConfigs.ToList();
             var messageTemplateList = context.MessageTemplates.ToList();
             var messageList = context.Messages.ToList();
+            var userMessageConfigList = context.MessageConfigs.ToList();
+
 
             // 4 consumer groups - 5 users
             AssignDefaultConsumerGroupToUser(userList.ElementAt(0), consumerGroupList.ElementAt(0));
@@ -321,8 +342,9 @@ namespace COLID.AppDataService.Tests.Integration
             AssignSearchFilterDatamarketPlaceToUser(userList.ElementAt(4), searchFilterDataMarketplaceList.GetRange(2, 1));
 
             // 3 stored queries - 5 users
-            AssignStoredQueriesToUser(userList.ElementAt(1), storedQueriesList.GetRange(0, 1));
-            AssignStoredQueriesToUser(userList.ElementAt(3), storedQueriesList.GetRange(1, 2));
+            AssignStoredQueryToSearchDatamarketPlace(searchFilterDataMarketplaceList.ElementAt(0), storedQueriesList.ElementAt(0));
+            AssignStoredQueryToSearchDatamarketPlace(searchFilterDataMarketplaceList.ElementAt(1), storedQueriesList.ElementAt(1));
+            AssignStoredQueryToSearchDatamarketPlace(searchFilterDataMarketplaceList.ElementAt(2), storedQueriesList.ElementAt(2));
 
             // 4 colid entry subscriptions - 5 users
             AssignColidEntrySubscriptionsToUser(userList.ElementAt(0), colidEntrySubscriptionList.GetRange(0, 1));
@@ -339,6 +361,13 @@ namespace COLID.AppDataService.Tests.Integration
         }
 
         #region User modification
+        public void AssignMessageConfigToUsers(User user, MessageConfig msgCfg)
+        {
+            using var context = new AppDataContext(_dbOptions);
+            var dbUser = context.Users.Find(user.Id);
+            dbUser.MessageConfig = msgCfg;
+            UpdateAndSaveUser(context, dbUser);
+        }
 
         public void AssignDefaultConsumerGroupToUser(User user, ConsumerGroup cg)
         {
@@ -364,14 +393,14 @@ namespace COLID.AppDataService.Tests.Integration
             UpdateAndSaveUser(context, dbUser);
         }
 
-        public void AssignStoredQueriesToUser(User user, ICollection<StoredQuery> sqs)
+        public void AssignStoredQueryToSearchDatamarketPlace(SearchFilterDataMarketplace sf, StoredQuery sq)
         {
             using var context = new AppDataContext(_dbOptions);
-            var dbUser = context.Users.Find(user.Id);
-            dbUser.StoredQueries = sqs;
-            UpdateAndSaveUser(context, dbUser);
+            var storedqiery = context.StoredQueries.Find(sq.Id);
+            var searchfilter = context.SearchFilterDataMarketplace.Find(sf.Id);
+            searchfilter.StoredQuery = sq;
+            this.Update<SearchFilterDataMarketplace>(searchfilter); 
         }
-
         public void AssignColidEntrySubscriptionsToUser(User user, ICollection<ColidEntrySubscription> crss)
         {
             using var context = new AppDataContext(_dbOptions);

@@ -63,7 +63,7 @@ namespace COLID.AppDataService.Tests.Functional.Controllers
             var responseCg = JsonConvert.DeserializeObject<ConsumerGroup>(stringResponse);
             Assert.NotNull(responseCg);
             Assert.NotEqual(0, responseCg.Id);
-            Assert.Equal(cg.Uri, responseCg.Uri);
+            Assert.Equal(cg.Uri.AbsoluteUri, responseCg.Uri.AbsoluteUri);
         }
 
         [Fact]

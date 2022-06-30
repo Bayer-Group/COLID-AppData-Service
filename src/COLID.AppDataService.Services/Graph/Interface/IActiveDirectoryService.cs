@@ -4,8 +4,6 @@ using System.Text;
 using System.Threading.Tasks;
 using COLID.AppDataService.Common.DataModel;
 using COLID.AppDataService.Common.DataModels.TransferObjects;
-using COLID.AppDataService.Common.Exceptions;
-using COLID.AppDataService.Services.Graph.Implementation;
 
 namespace COLID.AppDataService.Services.Graph.Interface
 {
@@ -67,7 +65,7 @@ namespace COLID.AppDataService.Services.Graph.Interface
         /// Checks the validity of multiple users by a query to the Microsoft Graph API and returns them accordingly in the form of an AdUserDto.
         /// In the first step a batch request is created based on the given email addresses. Then all reuqests are evaluated and only responses
         /// with the status OK are mapped accordingly.All other result types are ignored and mapped to invalid.
-        /// 
+        ///
         /// Invalid users will be cached for the configured expiration time and not requested from ms graph.
         /// </summary>
         /// <param name="emailList">user email-adresses to check</param>

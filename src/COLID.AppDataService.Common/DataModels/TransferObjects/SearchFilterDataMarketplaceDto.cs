@@ -6,8 +6,8 @@ namespace COLID.AppDataService.Common.DataModels.TransferObjects
     {
 #nullable enable
         public string? Name { get; set; }
+        public string? SearchTerm { get; set; }
 #nullable disable
-
         public JObject FilterJson { get; set; }
     }
 }

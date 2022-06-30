@@ -4,7 +4,7 @@ using Newtonsoft.Json.Converters;
 
 namespace COLID.AppDataService.Common.DataModel
 {
-    public class MessageTemplate : Entity<int>
+    public class MessageTemplate : EntityBase<int>
     {
         [JsonConverter(typeof(StringEnumConverter))]
         public MessageType Type { get; set; }

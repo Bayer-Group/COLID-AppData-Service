@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace COLID.AppDataService.Common.DataModel
 {
-    public class Message : Entity<int>
+    public class Message : EntityBase<int>
     {
         public string Subject { get; set; }
 
@@ -24,5 +24,7 @@ namespace COLID.AppDataService.Common.DataModel
 
         [ForeignKey("UserId")]
         public virtual User User { get; set; }
+
+        public string AdditionalInfo { get; set; }
     }
 }

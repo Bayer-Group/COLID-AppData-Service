@@ -10,14 +10,12 @@ namespace COLID.AppDataService.Repositories.Configuration
     {
         public void Configure(EntityTypeBuilder<StoredQuery> builder)
         {
-            // This Converter will perform the conversion to and from Json to the desired
-            builder.Property(f => f.QueryJson).HasConversion(
-                v => JsonConvert.SerializeObject(v, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }),
-                v => JsonConvert.DeserializeObject<JObject>(v, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }));
+            builder
+               .HasOne(a => a.SearchFilterDataMarketplace)
+               .WithOne(b => b.StoredQuery)
+               .HasForeignKey<SearchFilterDataMarketplace>(b => b.StoredQueryId)
+               .OnDelete(DeleteBehavior.SetNull);
 
-            builder.Property(f => f.LastExecutionResult).HasConversion(
-                v => JsonConvert.SerializeObject(v, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }),
-                v => JsonConvert.DeserializeObject<JObject>(v, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }));
         }
     }
 }

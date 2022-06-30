@@ -1,53 +1,224 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
-using COLID.AppDataService.Common.DataModel;
-using COLID.AppDataService.Common.Enums;
-using COLID.AppDataService.Common.Exceptions;
-using COLID.AppDataService.Common.Extensions;
 using COLID.AppDataService.Repositories.Context;
 using COLID.AppDataService.Repositories.Implementation;
 using COLID.AppDataService.Repositories.Interface;
 using COLID.AppDataService.Tests.Unit;
-using COLID.AppDataService.Tests.Unit.Builder;
 using COLID.Exception.Models.Business;
 using Xunit;
 using Xunit.Abstractions;
+using User = COLID.AppDataService.Common.DataModel.User;
 
 namespace COLID.AppDataService.Tests.Integration.Repositories
 {
     public class GenericRepositoryTest : IntegrationTestBase
     {
         private readonly AppDataContext _context;
-
-        ///  Tests all generic repository operations with INT as identifier type and MessageTemplate as entity type
-        private readonly IGenericRepository<MessageTemplate, int> _intRepo;
-
-        private readonly IEnumerable<MessageTemplate> _intList = TestData.GetPreconfiguredMessageTemplates();
+        private readonly IGenericRepository _repo;
+        private readonly ICollection<User> _users = TestData.GetPreconfiguredUsers().ToImmutableList();
 
         public GenericRepositoryTest(ITestOutputHelper output) : base(output)
         {
             _context = new AppDataContext(GetDbContextOptions());
-            _intRepo = new GenericRepository<MessageTemplate, int>(_context);
+            _repo = new GenericRepository(_context);
             _context.Database.EnsureCreated();
 
-            _seeder.SeedMessageTemplates();
+            _seeder.SeedUsers(); // use Users, because they are the main part of this application
         }
 
-        #region [Synchronous tests]
+        //#region [Synchronous tests]
 
         [Fact]
-        public void FindAll_Should_ReturnQueryableObject()
+        public void GetAll_Should_Return_EntityList()
         {
-            Assert.NotNull(_intRepo.FindAll());
+            var result = _repo.GetAll<User>();
+            Assert.NotNull(result);
         }
 
+        [Fact]
+        public async Task GetAllAsync_Should_Return_EntityList()
+        {
+            var result = await _repo.GetAllAsync<User>();
+            Assert.NotNull(result);
+        }
+
+        [Fact]
+        public void Get_Should_Return_Entity()
+        {
+            var result = _repo.Get<User>();
+            Assert.NotNull(result);
+        }
+
+        [Fact]
+        public async Task GetAsync_Should_Return_Entity()
+        {
+            var result = await _repo.GetAsync<User>();
+            Assert.NotNull(result);
+        }
+
+        [Fact]
+        public void GetOne_Should_Return_OneEntity()
+        {
+            var userId = _users.First().Id;
+            var result = _repo.GetOne<User>(u => u.Id.Equals(userId));
+            Assert.NotNull(result);
+        }
+
+        [Fact]
+        public async Task GetOneAsync_Should_Return_OneEntity()
+        {
+            var userId = _users.First().Id;
+            var result = await _repo.GetOneAsync<User>(u => u.Id.Equals(userId));
+            Assert.NotNull(result);
+        }
+
+        [Fact]
+        public void TryGetOneAsync_Should_Return_True_IfEntityExists()
+        {
+            var userId = _users.First().Id;
+            var result = _repo.TryGetOne<User>(out var user, u => u.Id.Equals(userId));
+            Assert.True(result);
+            Assert.NotNull(user);
+        }
+
+        [Fact]
+        public void TryGetOneAsync_Should_Return_False_IfEntityNotExists()
+        {
+            var invalidUserId = Guid.NewGuid();
+            var result = _repo.TryGetOne<User>(out var user, u => u.Id.Equals(invalidUserId));
+            Assert.False(result);
+            Assert.Null(user);
+        }
+
+        [Fact]
+        public void GetById_Should_Return_EntityById()
+        {
+            var userId = _users.First().Id;
+            var result = _repo.GetById<User>(userId);
+            Assert.NotNull(result);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_Should_Return_EntityById()
+        {
+            var userId = _users.First().Id;
+            var result = await _repo.GetByIdAsync<User>(userId);
+            Assert.NotNull(result);
+        }
+
+        [Fact]
+        public void GetCount_Should_Return_AmountOfEntities()
+        {
+            var amount = _users.Count;
+            var result = _repo.GetCount<User>();
+            Assert.Equal(amount, result);
+        }
+
+        [Fact]
+        public async Task GetCountAsync_Should_Return_AmountOfEntities()
+        {
+            var amount = _users.Count;
+            var result = await _repo.GetCountAsync<User>();
+            Assert.Equal(amount, result);
+        }
+
+        [Fact]
+        public void GetExists_Should_Return_True_IfEntityExists()
+        {
+            var userId = _users.First().Id;
+            var result = _repo.GetExists<User>(u => u.Id.Equals(userId));
+            Assert.True(result);
+        }
+
+        [Fact]
+        public async Task GetExistsAsync_Should_Return_True_IfEntityExists()
+        {
+            var userId = _users.First().Id;
+            var result = await _repo.GetExistsAsync<User>(u => u.Id.Equals(userId));
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void Create_Should_Create_Entity()
+        {
+            var user = new User { Id = new Guid(), EmailAddress = "chris.kaubisch@greyblack.de" };
+            _repo.Create(user);
+
+            _seeder.ResetUsers();
+        }
+
+        [Fact]
+        public void Update_Should_Update_Entity()
+        {
+            var user = _users.First();
+            var userEntity = _repo.GetOne<User>(u => u.Id.Equals(user.Id));
+
+            userEntity.EmailAddress = "peter.lustig@test.com";
+            _repo.Update(userEntity);
+            _repo.Save();
+
+            var updatedUserEntity = _repo.GetOne<User>(u => u.Id.Equals(user.Id));
+            Assert.Equal(userEntity.EmailAddress, updatedUserEntity.EmailAddress);
+            Assert.NotEqual(user.EmailAddress, updatedUserEntity.EmailAddress);
+
+            _seeder.ResetUsers();
+        }
+
+        [Fact]
+        public void DeleteById_Should_Delete_Entity()
+        {
+            var user = _users.First();
+            var userExistInDb = _repo.GetExists<User>(u => u.Id.Equals(user.Id));
+            Assert.True(userExistInDb);
+
+            _repo.Delete<User>(user.Id);
+            _repo.Save();
+
+            Assert.Throws<EntityNotFoundException>(() => _repo.GetOne<User>(u => u.Id.Equals(user.Id)));
+
+            _seeder.ResetUsers();
+        }
+
+        [Fact]
+        public void DeleteByEntity_Should_Delete_Entity()
+        {
+            var user = _users.First();
+            var userExistInDb = _repo.GetExists<User>(u => u.Id.Equals(user.Id));
+            Assert.True(userExistInDb);
+
+            _repo.Delete(user);
+            _repo.Save();
+
+            Assert.Throws<EntityNotFoundException>(() => _repo.GetOne<User>(u => u.Id.Equals(user.Id)));
+
+            _seeder.ResetUsers();
+        }
+
+        [Fact]
+        public void DeleteRange_Should_Delete_MultipleEntities()
+        {
+            var users = _users;
+            Assert.True(users.Count > 1);
+
+            var userEntities = _repo.GetAll<User>();
+
+            _repo.DeleteRange(userEntities);
+            _repo.Save();
+
+            var userEntitiesAfterDelete = _repo.GetAll<User>();
+            Assert.Empty(userEntitiesAfterDelete);
+
+            _seeder.ResetUsers();
+        }
+
+        /*
         [Fact]
         public void FindByCondition_Should_ReturnQueryableObject()
         {
-            Assert.NotNull(_intRepo.FindByCondition(e => e.IsNotEmpty()));
+            Assert.NotNull(_repo.FindByCondition(e => e.IsNotEmpty()));
         }
 
         [Fact]
@@ -167,7 +338,7 @@ namespace COLID.AppDataService.Tests.Integration.Repositories
         public void Update_Should_UpdateAndReturnEntity()
         {
             //var oldEntity = _intRepo.GetOne(3); // bad ..
-            
+
             _seeder.ResetMessageTemplates();
             var oldEntity = TestData.GetPreconfiguredMessageTemplates()
                 .FirstOrDefault(x => MessageType.StoredQueryResult.Equals(x.Type));
@@ -246,9 +417,9 @@ namespace COLID.AppDataService.Tests.Integration.Repositories
             Assert.Throws<ArgumentNullException>(() => _intRepo.DeleteRange(new Collection<MessageTemplate>()));
         }
 
-        #endregion [Synchronous tests]
+#endregion [Synchronous tests]
 
-        #region [Asynchron tests]
+#region [Asynchron tests]
 
         [Fact]
         public async Task GetAllAsync_Should_ReturnEntities()
@@ -332,6 +503,8 @@ namespace COLID.AppDataService.Tests.Integration.Repositories
             Assert.ThrowsAsync<ArgumentNullException>(() => _intRepo.CreateAsync(null));
         }
 
-        #endregion [Asynchron tests]
+#endregion [Asynchron tests]
+
+        */
     }
 }

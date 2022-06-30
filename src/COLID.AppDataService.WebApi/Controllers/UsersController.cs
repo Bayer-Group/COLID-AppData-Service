@@ -205,29 +205,40 @@ namespace COLID.AppDataService.Controllers
 
         #region [Stored Queries]
 
-        [HttpGet("{userId}/storedQueries")]
-        public IActionResult GetAllStoredQueries(Guid userId)
+        [HttpPost("processStoredQueries")]
+        public async Task<IActionResult> ProcessStoredQueries()
         {
-            throw new NotImplementedException();
+            await _userService.ProcessStoredQueries();
+            return NoContent();
         }
 
-        [HttpGet("{userId}/storedQueries/{id}")]
-        public IActionResult GetSingleStoredQuery(Guid userId, int id)
+        [HttpGet("allSubscribedSearchFiltersDataMarketplace")]
+        public async Task<IActionResult> GetSearchFiltersDataMarketplaceOnlyWithStoredQueriesAsync()
         {
-            throw new NotImplementedException();
+            var searchFiltersWithStoredQueries = await _userService.GetAllSearchFiltersDataMarketplaceOnlyWithStoredQueriesAsync();
+            return Ok(searchFiltersWithStoredQueries);
+        }
+         
+        [HttpGet("{userId}/subscribedSearchFiltersDataMarketplace")]
+        public async Task<IActionResult> GetSearchFiltersDataMarketplaceOnlyWithStoredQueriesAsync(Guid userId)
+        {
+            var searchFiltersWithStoredQueries = await _userService.GetSearchFiltersDataMarketplaceOnlyWithStoredQueriesAsync(userId);
+            return Ok(searchFiltersWithStoredQueries);
         }
 
-        [HttpPut("{userId}/storedQueries")]
+        [HttpPut("{userId}/subscribeToSearchFilterDataMarketplace")]
         [Consumes(MediaTypeNames.Application.Json)]
-        public IActionResult AddStoredQuery(Guid userId, StoredQueryDto storedQueryDto)
+        public async Task<IActionResult> AddStoredQueryToSearchFiltersDataMarketplaceAync(Guid userId, StoredQueryDto storedQueryDto)
         {
-            throw new NotImplementedException();
+            var searchFilterWithStoredQueries = await _userService.AddStoredQueryToSearchFiltersDataMarketplaceAync(userId,storedQueryDto);
+            return Ok(searchFilterWithStoredQueries);
         }
 
-        [HttpDelete("{userId}/storedQueries")]
-        public IActionResult RemoveStoredQuery(Guid userId, int id)
+        [HttpDelete("{userId}/removeSubscriptionFromSearchFilterDataMarketplace/{id}")]
+        public async Task<IActionResult> RemoveStoredQuery(Guid userId, int id)
         {
-            throw new NotImplementedException();
+            var searchFilterWithStoredQueries = await _userService.RemoveStoredQueryFromSearchFiltersDataMarketplaceAync(userId, id);
+            return Ok(searchFilterWithStoredQueries);
         }
 
         #endregion [Stored Queries]
@@ -275,7 +286,7 @@ namespace COLID.AppDataService.Controllers
             return Ok(updatedEntity);
         }
 
-        #endregion [Message User Config]
+        #endregion [Message Config]
 
         #region [Messages]
 
@@ -315,5 +326,6 @@ namespace COLID.AppDataService.Controllers
         }
 
         #endregion [Messages]
+ 
     }
 }

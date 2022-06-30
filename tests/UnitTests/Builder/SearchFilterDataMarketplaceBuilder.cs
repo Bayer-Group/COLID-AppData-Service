@@ -31,6 +31,12 @@ namespace COLID.AppDataService.Tests.Unit.Builder
             return this;
         }
 
+        public SearchFilterDataMarketplaceBuilder WithStoredQuery(StoredQuery sq)
+        {
+            _entity.StoredQuery = sq;
+            return this;
+        }
+
         public SearchFilterDataMarketplaceBuilder WithUser(User user)
         {
             _entity.User = user;

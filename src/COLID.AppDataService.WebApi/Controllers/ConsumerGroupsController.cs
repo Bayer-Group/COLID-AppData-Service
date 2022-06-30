@@ -1,5 +1,4 @@
 ﻿using System.Net.Mime;
-using System.Threading.Tasks;
 using COLID.AppDataService.Common.Constants;
 using COLID.AppDataService.Common.DataModels.TransferObjects;
 using COLID.AppDataService.Services.Interface;
@@ -34,9 +33,9 @@ namespace COLID.AppDataService.Controllers
 
         [HttpPost]
         [Authorize(Roles = ApplicationRoles.ConsumerGroup.FullAccess)]
-        public async Task<IActionResult> Create([FromBody] ConsumerGroupDto dto)
+        public IActionResult Create([FromBody] ConsumerGroupDto dto)
         {
-            var cgEntity = await _consumerGroupService.CreateAsync(dto);
+            var cgEntity = _consumerGroupService.Create(dto);
             return Created($"api/consumergroups", cgEntity);
         }
 

@@ -10,7 +10,7 @@ namespace COLID.AppDataService.Common.DataModels
         public string Message { get; set; }
 
 #nullable enable
-        public EntityBase? Entity { get; set; }
+        public IEntity? Entity { get; set; }
 #nullable disable
 
         public string ApplicationId { get; set; }

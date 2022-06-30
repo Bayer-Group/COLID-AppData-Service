@@ -5,6 +5,7 @@ using COLID.AppDataService.Services.Implementation;
 using COLID.AppDataService.Services.Interface;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Services.Configuration;
 
 namespace COLID.AppDataService.Services
 {
@@ -23,12 +24,15 @@ namespace COLID.AppDataService.Services
 
             services.AddTransient<IColidEntrySubscriptionService, ColidEntrySubscriptionService>();
             services.AddTransient<IConsumerGroupService, ConsumerGroupService>();
-            services.AddTransient(typeof(IGenericService<,>), typeof(GenericService<,>));
             services.AddTransient<IMessageService, MessageService>();
             services.AddTransient<IMessageTemplateService, MessageTemplateService>();
             services.AddTransient<IUserService, UserService>();
             services.AddTransient<IWelcomeMessageService, WelcomeMessageService>();
             services.AddTransient<IActiveDirectoryService, ActiveDirectoryService>();
+            services.AddTransient<IRemoteSearchService, RemoteSearchService>();
+
+            services.Configure<SearchServiceTokenOptions>(configuration.GetSection("SearchServiceTokenOptions"));
+
 
             return services;
         }

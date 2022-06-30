@@ -2,7 +2,6 @@
 using COLID.AppDataService.Services;
 using COLID.Cache;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace COLID.AppDataService
@@ -18,10 +17,10 @@ namespace COLID.AppDataService
             services.AddDistributedCacheModule(Configuration, GetSerializerSettings());
         }
 
-        public void ConfigureProduction(IApplicationBuilder app, IWebHostEnvironment env)
+        public void ConfigureProduction(IApplicationBuilder app)
         {
             app.UseSqlDatabaseMigration();
-            Configure(app, env);
+            Configure(app);
         }
     }
 }

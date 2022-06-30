@@ -17,7 +17,7 @@ namespace COLID.AppDataService.Services.Graph.Implementation
         public Task<IList<AdUserDto>> CheckUsersValidityAsync(ISet<string> adUserEmailSet)
         {
             IList<AdUserDto> userList = new List<AdUserDto>();
-            foreach(var email in adUserEmailSet)
+            foreach (var email in adUserEmailSet)
             {
                 userList.Add(new AdUserDto(Guid.NewGuid().ToString(), email, true));
             }
@@ -107,6 +107,5 @@ namespace COLID.AppDataService.Services.Graph.Implementation
                 Mail = mail ?? $"{givenName}.{surname}.{mailNickname}@bayer.com"
             };
         }
-
     }
 }

@@ -4,17 +4,21 @@ using AutoMapper;
 using COLID.AppDataService.Common.AutoMapper;
 using COLID.AppDataService.Repositories;
 using COLID.AppDataService.Services;
+using COLID.Cache.Configuration;
+using COLID.Common.Logger;
 using COLID.Exception;
 using COLID.Identity;
+using COLID.Swagger;
+using CorrelationId;
+using CorrelationId.DependencyInjection;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
-using COLID.Swagger;
-using COLID.Cache.Configuration;
 
 namespace COLID.AppDataService
 {
@@ -38,6 +42,12 @@ namespace COLID.AppDataService
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddHttpContextAccessor();
+            services.AddTransient<IHttpContextAccessor, HttpContextAccessor>();
+            services.AddHttpClient();
+
+            services.AddDefaultCorrelationId();
+            services.AddCorrelationIdLogger();
             services.AddCors();
             services.AddAutoMapper(typeof(MappingProfiles));
 
@@ -53,12 +63,13 @@ namespace COLID.AppDataService
             services.AddColidSwaggerGeneration(Configuration);
             services.AddServiceModules(Configuration);
             services.AddRepositoryModules(Configuration);
-            services.AddAuthorizationModule(Configuration);
+            services.AddIdentityModule(Configuration);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app)
         {
+            app.UseCorrelationId();
             app.UseHttpsRedirection();
 
             app.UseRouting();

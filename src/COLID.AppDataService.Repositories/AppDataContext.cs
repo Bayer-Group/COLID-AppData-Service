@@ -29,7 +29,7 @@ namespace COLID.AppDataService.Repositories.Context
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.EnableSensitiveDataLogging(true);
+            optionsBuilder.EnableSensitiveDataLogging();
         }
 
         public override int SaveChanges(bool acceptAllChangesOnSuccess)
@@ -45,7 +45,7 @@ namespace COLID.AppDataService.Repositories.Context
         }
 
         /// <summary>
-        /// Required function to set the fields CreatedAt and ModifiedAt on all functions, that doesn't use the .AsNoTracking() chaining on Queries.
+        /// Required function to set the fields CreatedAt and ModifiedAt on all functions, that doesn't use the .asNoTracked() (readOnly) chaining on Queries.
         /// </summary>
         private void OnBeforeSaving()
         {
@@ -54,7 +54,7 @@ namespace COLID.AppDataService.Repositories.Context
             {
                 var now = DateTime.UtcNow;
 
-                if (entry.Entity is EntityBase entity)
+                if (entry.Entity is IEntity entity)
                 {
                     switch (entry.State)
                     {

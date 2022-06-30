@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Threading;
 using System.Threading.Tasks;
 using COLID.AppDataService.Common.Constants;
 using COLID.AppDataService.Common.DataModels.TransferObjects;
@@ -14,7 +11,6 @@ using COLID.Exception.Models.Business;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
-using Newtonsoft.Json;
 
 namespace COLID.AppDataService.Services.Graph.Implementation
 {
@@ -145,7 +141,7 @@ namespace COLID.AppDataService.Services.Graph.Implementation
                 {
                     var userRequest = _graphClient.Users[mail]
                         .Request()
-                        .Select(u => new {u.Id, u.Mail, u.AccountEnabled});
+                        .Select(u => new { u.Id, u.Mail, u.AccountEnabled });
 
                     var adUser = await userRequest.GetAsync();
                     if (adUser != null)

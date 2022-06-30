@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 namespace COLID.AppDataService.Common.DataModel
 {
-    public class ColidEntrySubscription : Entity<int>
+    public class ColidEntrySubscription : EntityBase<int>
     {
         public Uri ColidPidUri { get; set; }
 

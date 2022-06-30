@@ -2,7 +2,6 @@
 using COLID.AppDataService.Services;
 using COLID.Cache;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace COLID.AppDataService
@@ -18,9 +17,9 @@ namespace COLID.AppDataService
             services.AddNoCacheModule();
         }
 
-        public void ConfigureTest(IApplicationBuilder app, IWebHostEnvironment env)
+        public void ConfigureTest(IApplicationBuilder app)
         {
-            Configure(app, env);
+            Configure(app);
         }
     }
 }

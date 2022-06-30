@@ -13,22 +13,17 @@ namespace COLID.AppDataService.Repositories.Configuration
                 .IsUnique();
 
             builder
-                .HasOne(u => u.SearchFilterEditor)
-                .WithMany(s => s.Users)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            builder
                 .HasMany(u => u.SearchFiltersDataMarketplace)
                 .WithOne(c => c.User)
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder
-                .HasMany(u => u.StoredQueries)
+                .HasMany(u => u.Messages)
                 .WithOne(c => c.User)
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder
-                .HasMany(u => u.Messages)
+                .HasMany(u => u.ColidEntrySubscriptions)
                 .WithOne(c => c.User)
                 .OnDelete(DeleteBehavior.Cascade);
         }

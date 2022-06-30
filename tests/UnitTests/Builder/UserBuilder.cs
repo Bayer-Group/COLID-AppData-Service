@@ -62,13 +62,6 @@ namespace COLID.AppDataService.Tests.Unit.Builder
             _entity.SearchFiltersDataMarketplace = searchFilter;
             return this;
         }
-
-        public UserBuilder WithStoredQueries(ICollection<StoredQuery> qry)
-        {
-            _entity.StoredQueries = qry;
-            return this;
-        }
-
         public UserBuilder WithColidEntrySubscriptions(ICollection<ColidEntrySubscription> sub)
         {
             _entity.ColidEntrySubscriptions = sub;

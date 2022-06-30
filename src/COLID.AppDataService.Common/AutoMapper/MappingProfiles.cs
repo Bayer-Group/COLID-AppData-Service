@@ -17,6 +17,9 @@ namespace COLID.AppDataService.Common.AutoMapper
             CreateMap<SearchFilterDataMarketplace, SearchFilterDataMarketplaceDto>();
             CreateMap<SearchFilterDataMarketplaceDto, SearchFilterDataMarketplace>();
 
+            CreateMap<StoredQueryDto, StoredQuery>();
+            CreateMap<StoredQuery, StoredQueryDto>();
+
             CreateMap<ColidEntrySubscription, ColidEntrySubscriptionDto>();
             CreateMap<ColidEntrySubscriptionDto, ColidEntrySubscription>();
 

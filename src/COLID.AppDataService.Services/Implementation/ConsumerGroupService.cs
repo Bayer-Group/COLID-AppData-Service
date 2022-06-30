@@ -8,41 +8,57 @@ using COLID.AppDataService.Common.Utilities;
 using COLID.AppDataService.Repositories.Interface;
 using COLID.AppDataService.Services.Interface;
 using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using COLID.AppDataService.Common.Extensions;
+using COLID.Cache.Services;
+using COLID.Exception.Models.Business;
 
 namespace COLID.AppDataService.Services.Implementation
 {
-    public class ConsumerGroupService : GenericService<ConsumerGroup, int>, IConsumerGroupService
+    public class ConsumerGroupService : ServiceBase<ConsumerGroup>, IConsumerGroupService
     {
-        private readonly IConsumerGroupRepository _consumerGroupRepo;
+
         private readonly IMapper _mapper;
         private readonly ILogger<ConsumerGroupService> _logger;
 
-        public ConsumerGroupService(IConsumerGroupRepository cgRepo, IMapper mapper, ILogger<ConsumerGroupService> logger) : base(cgRepo)
+        public ConsumerGroupService(IGenericRepository repo, IMapper mapper, ILogger<ConsumerGroupService> logger) : base(repo)
         {
-            _consumerGroupRepo = cgRepo;
             _mapper = mapper;
             _logger = logger;
         }
 
-        public ConsumerGroup GetOne(ConsumerGroupDto consumerGroupDto)
-        {
-            Guard.IsNotNull(consumerGroupDto);
-            var uri = consumerGroupDto.Uri;
-            return GetOne(uri);
-        }
-
         public ConsumerGroup GetOne(Uri uri)
-        {
+        { 
             Guard.IsValidUri(uri);
-            return _consumerGroupRepo.GetOne(uri);
+            var consumerGroups  = GetAll()
+                .AsEnumerable()
+                .Where(ce => ce.Uri.AbsoluteUri == uri.AbsoluteUri)
+                .ToList();
+            var consumerGroup = consumerGroups.SingleOrDefault();
+            if (consumerGroup.IsEmpty())
+            {
+                throw new EntityNotFoundException($"Unable to find a consumer group with the Uri {uri}", uri.AbsoluteUri);
+            }
+
+            return consumerGroup;
         }
 
         public bool TryGetOne(ConsumerGroupDto consumerGroupDto, out ConsumerGroup consumerGroup)
         {
             Guard.IsNotNull(consumerGroupDto);
-            var uri = consumerGroupDto.Uri;
-            Guard.IsValidUri(uri);
-            return _consumerGroupRepo.TryGetOne(uri, out consumerGroup);
+            Guard.IsValidUri(consumerGroupDto.Uri);
+
+            consumerGroup = null;
+            try
+            {
+                consumerGroup = GetOne(consumerGroupDto.Uri);
+            }
+            catch (EntityNotFoundException)
+            {
+            }
+            return consumerGroup.IsNotEmpty();
         }
 
         public ConsumerGroup Create(ConsumerGroupDto consumerGroupDto)
@@ -55,21 +71,10 @@ namespace COLID.AppDataService.Services.Implementation
             }
 
             cgEntity = _mapper.Map<ConsumerGroup>(consumerGroupDto);
-            return base.Create(cgEntity);
-        }
+            Create(cgEntity);
+            Save();
 
-        public async Task<ConsumerGroup> CreateAsync(ConsumerGroupDto consumerGroupDto)
-        {
-            Guard.IsNotNull(consumerGroupDto);
-
-            ConsumerGroup cgEntity;
-            if (TryGetOne(consumerGroupDto, out cgEntity))
-            {
-                throw new EntityAlreadyExistsException($"This consumer group already exists.", cgEntity);
-            }
-
-            cgEntity = _mapper.Map<ConsumerGroup>(consumerGroupDto);
-            return await base.CreateAsync(cgEntity);
+            return cgEntity;
         }
 
         public void Delete(ConsumerGroupDto consumerGroupDto)
@@ -78,9 +83,10 @@ namespace COLID.AppDataService.Services.Implementation
             var uri = consumerGroupDto.Uri;
 
             Guard.IsValidUri(uri);
-            var consumerGroup = _consumerGroupRepo.GetOne(uri);
+            var consumerGroup = GetOne(uri);
 
-            base.Delete(consumerGroup);
+            Delete(consumerGroup);
+            Save();
         }
     }
 }

@@ -8,6 +8,6 @@ namespace COLID.AppDataService.Common.DataModels.TransferObjects
     {
         public Uri ColidPidUri { get; set; }
 
-        public int Subscribers { get; set; }
+        public int Subscriptions { get; set; }
     }
 }

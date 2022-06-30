@@ -1,19 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using AutoMapper;
 using COLID.AppDataService.Common.DataModel;
 using COLID.AppDataService.Common.DataModels.TransferObjects;
-using COLID.AppDataService.Common.Exceptions;
 using COLID.AppDataService.Common.Utilities;
 using COLID.AppDataService.Services.Graph.Interface;
 using COLID.Cache.Services;
 using COLID.Exception.Models.Business;
 using Microsoft.Extensions.Logging;
-using Microsoft.Graph;
 
 namespace COLID.AppDataService.Services.Graph.Implementation
 {
@@ -226,6 +223,5 @@ namespace COLID.AppDataService.Services.Graph.Implementation
         {
             return user.AccountEnabled ?? false;
         }
-
     }
 }

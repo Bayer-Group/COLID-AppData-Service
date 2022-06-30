@@ -2,14 +2,13 @@
 using System.Collections.Generic;
 using COLID.AppDataService.Common.DataModel;
 using COLID.AppDataService.Common.DataModels.TransferObjects;
-using COLID.AppDataService.Common.Exceptions;
 
 namespace COLID.AppDataService.Services.Interface
 {
     /// <summary>
     /// Service to handle all colid entry subscription related operations.
     /// </summary>
-    public interface IColidEntrySubscriptionService : IGenericService<ColidEntrySubscription, int>
+    public interface IColidEntrySubscriptionService : IServiceBase<ColidEntrySubscription>
     {
         /// <summary>
         /// Fetches a single colid entry subscription, identified by a given user id and colid pid uri within the dto.
@@ -40,6 +39,8 @@ namespace COLID.AppDataService.Services.Interface
         /// <summary>
         /// Fetches all Subscriptions and count the amount of subscribers per colid pid uri
         /// </summary>
-        IList<ColidEntrySubscriptionAmountDto> GetColidPidUrisAndAmountSubscriptions();
+        /// <param name="colidPidUris">list of COLID entry PID URIs</param>
+        /// <return>list of PID URIs and their number of subscriptions</return>
+        IList<ColidEntrySubscriptionAmountDto> GetColidPidUrisAndAmountSubscriptions(ISet<Uri> colidPidUris);
     }
 }

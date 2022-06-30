@@ -1,5 +1,4 @@
-﻿using System.Threading.Tasks;
-using COLID.AppDataService.Common.DataModel;
+﻿using COLID.AppDataService.Common.DataModel;
 using COLID.AppDataService.Common.DataModels.TransferObjects;
 using COLID.AppDataService.Common.Enums;
 using COLID.AppDataService.Common.Exceptions;
@@ -9,7 +8,7 @@ namespace COLID.AppDataService.Services.Interface
     /// <summary>
     /// Service to handle all message template related operations.
     /// </summary>
-    public interface IMessageTemplateService : IGenericService<MessageTemplate, int>
+    public interface IMessageTemplateService : IServiceBase<MessageTemplate>
     {
         /// <summary>
         /// Fetches a single message template, identified by a given type.
@@ -24,13 +23,6 @@ namespace COLID.AppDataService.Services.Interface
         /// <param name="messageTemplateDto">the dto to use</param>
         /// <exception cref="EntityAlreadyExistsException">if the message type is already assigned to another template</exception>
         MessageTemplate Create(MessageTemplateDto messageTemplateDto);
-
-        /// <summary>
-        /// Create a new message template asynchronously by a given dto.
-        /// </summary>
-        /// <param name="messageTemplateDto">the dto to use</param>
-        /// <exception cref="EntityAlreadyExistsException">if the message type is already assigned to another template</exception>
-        Task<MessageTemplate> CreateAsync(MessageTemplateDto messageTemplateDto);
 
         /// <summary>
         /// Updates the message template.
