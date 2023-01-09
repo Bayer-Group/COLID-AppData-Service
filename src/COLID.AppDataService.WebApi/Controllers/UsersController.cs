@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
+using Microsoft.AspNetCore.Http;
+using COLID.AppDataService.Common.DataModel;
 
 namespace COLID.AppDataService.Controllers
 {
@@ -31,7 +33,6 @@ namespace COLID.AppDataService.Controllers
         #region [User]
 
         [HttpGet]
-        [Authorize(Roles = ApplicationRoles.Administration)]
         public async Task<IActionResult> GetUsers()
         {
             var all = await _userService.GetAllAsync();
@@ -218,7 +219,14 @@ namespace COLID.AppDataService.Controllers
             var searchFiltersWithStoredQueries = await _userService.GetAllSearchFiltersDataMarketplaceOnlyWithStoredQueriesAsync();
             return Ok(searchFiltersWithStoredQueries);
         }
-         
+
+        [HttpGet("allSubscribedSearchFiltersDataMarketplaceCount")]
+        public async Task<IActionResult> GetSearchFiltersDataMarketplaceCount()
+        {
+            var searchFiltersWithStoredQueries = await _userService.GetSearchFiltersDataMarketplaceCount();
+            return Ok(searchFiltersWithStoredQueries);
+        }
+
         [HttpGet("{userId}/subscribedSearchFiltersDataMarketplace")]
         public async Task<IActionResult> GetSearchFiltersDataMarketplaceOnlyWithStoredQueriesAsync(Guid userId)
         {
@@ -327,5 +335,260 @@ namespace COLID.AppDataService.Controllers
 
         #endregion [Messages]
  
+        #region [Favorites List]
+
+        /// <summary>
+        /// Fetches the favorites lists and its entries associated to an user. 
+        /// </summary>
+        /// <param name="userId">unique user id</param>
+        /// <returns>A list containing an overview of FavoriteLists Names and its entries</returns>
+        /// <response code="200">A list containing an overview of FavoriteLists Names and its entries</response>
+        /// <response code="404">If user is not found</response>
+        /// <response code="500">If an unexpected error occurs</response>
+        [ProducesResponseType(typeof(ICollection<FavoritesList>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        [HttpGet("favoritesList/{userId}")]
+        public async Task<IActionResult> GetFavoritesList(Guid userId)
+        {
+            var favoritesList = await _userService.GetFavoritesListsAsync(userId);
+            return Ok(favoritesList);
+        }
+
+        [HttpGet("getAllFavoritesListCount")]
+        public async Task<IActionResult> GetAllFavoritesListCount()
+        {
+            var favoritesList = await _userService.GetAllFavoritesListCount();
+            return Ok(favoritesList);
+        }
+
+        /// <summary>
+        /// Creates an entry into the favorites lists. If just the List Name is passed, creates a blank list 
+        /// </summary>
+        /// <param name="userId">unique user id</param>
+        /// <param name="favoritesListDto">the list name. PIDURI and Personal Note for List Entry</param>
+        /// <remarks>
+        ///   <br><b>Note:</b>If only Name is provided then it creates an empty favorite list. The PIDURI and PersonalNote are mandatory to make a favorite list entry</br>
+        /// </remarks>
+        /// <returns>A list containing an overview of FavoriteLists Names and its entries</returns>
+        /// <response code="200">A list containing an overview of FavoriteLists Names and its entries</response>
+        /// <response code="404">If entity is not found</response>
+        /// <response code="500">If an unexpected error occurs</response>
+        [ProducesResponseType(typeof(User), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        [HttpPut("favoritesList/{userId}")]
+        [Consumes(MediaTypeNames.Application.Json)]
+        public async Task<IActionResult> AddFavoritesList(Guid userId, [FromBody] FavoritesListDto favoritesListDto)
+        {
+            var user = await _userService.AddFavoritesListAsync(userId, favoritesListDto);
+            return Ok(user);
+        }
+
+        /// <summary>
+        /// Insert multiple entries into favorites lists.
+        /// </summary>
+        /// <param name="userId">unique user id</param>
+        /// <param name="favoritesListEntriesDto">the list id. PIDURIs of the entries to be added </param>
+        /// <returns>A list containing an overview of FavoriteLists Names and its entries</returns>
+        /// <response code="200">A list containing an overview of FavoriteLists Names and its entries</response>
+        /// <response code="404">If entity is not found</response>
+        /// <response code="500">If an unexpected error occurs</response>
+        [ProducesResponseType(typeof(User), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        [HttpPut("favoritesListEntries/{userId}")]
+        [Consumes(MediaTypeNames.Application.Json)]
+        public async Task<IActionResult> AddFavoritesListEntries(Guid userId, [FromBody] List<FavoritesListEntriesDTO> favoritesListEntriesDto)
+        {
+            var user = await _userService.AddFavoritesListEntriesAsync(userId, favoritesListEntriesDto);
+            return Ok(user);
+        }
+
+        /// <summary>
+        /// Creates a single entry into a favorite list provided by the ID of the favoritelist
+        /// </summary>
+        /// <param name="userId">unique user id</param>
+        /// <param name="favoritesListId"> the list ID for which entry needs to be made.</param>
+        /// <param name="favoritesListDto">PIDURI and Personal Note for List Entry.</param>
+        /// <remarks>
+        ///   <br><b>Note:</b>The List Name in the DTO can be ignored as we are providing favoritesListId and only valid PIDURI and Personal Note are expected</br>
+        /// </remarks>
+        /// <returns>The Favorite List and the newly created entry</returns>
+        /// <response code="200">The Favorite List and the newly created entry</response>
+        /// <response code="404">If entity is not found</response>
+        /// <response code="500">If an unexpected error occurs</response>
+        [HttpPost("favoritesList/{userId}/{favoritesListId}")]
+        [ProducesResponseType(typeof(ICollection<FavoritesList>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        [Consumes(MediaTypeNames.Application.Json)]
+        public async Task<IActionResult> AddFavoritesListEntryPerID(Guid userId, int favoritesListId, [FromBody] FavoritesListDto favoritesListDto)
+        {
+            var user = await _userService.AddFavoritesListEntryPerID(userId, favoritesListId, favoritesListDto);
+            return Ok(user);
+        }
+
+        /// <summary>
+        /// Returns all the PIDURIs for users' favorites lists
+        /// </summary>
+        /// <param name="userId">unique user id</param>
+        /// <returns>List of PID URIs</returns>
+        /// <response code="200">List of PID URIs</response>
+        /// <response code="404">If entity is not found</response>
+        /// <response code="500">If an unexpected error occurs</response>
+        [HttpGet("favoritesListPIDUris/{userId}")]
+        [ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetFavoritesListPIDUris(Guid userId)
+        {
+            var favoritesListPIDUris = await _userService.GetFavoritesListPIDUris(userId);
+            return Ok(favoritesListPIDUris);
+        }
+
+        /// <summary>
+        /// Provides the details of the resources which are part of Users' Favorites List
+        /// </summary>
+        /// <param name="userId">unique user id</param>
+        /// <param name="favoritesListId"> the favoritesListId for which resource details need to be fetched</param>
+        /// <returns>A dictionary containing PIDURI and its details as part of Elastic Json Response</returns>
+        /// <response code="200">A dictionary containing PIDURI and its details as part of Elastic Json Response</response>
+        /// <response code="404">If entity is not found</response>
+        /// <response code="500">If an unexpected error occurs</response>
+        [ProducesResponseType(typeof(Dictionary<string, JObject>), 200)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        [HttpGet("favoritesListDetails/{userId}/{favoritesListId}")]
+        public async Task<IActionResult> GetFavoritesListDetails(Guid userId, int favoritesListId)
+        {
+            var favoritesListDetails = await _userService.GetFavoritesListDetails(userId, favoritesListId);
+            return Ok(favoritesListDetails);
+        }
+
+        /// <summary>
+        /// Provides the IDs of all the favorites lists of a resource.
+        /// </summary>
+        /// <param name="userId">unique user id</param>
+        /// <param name="pidUri"> the PID URI of the resource</param>
+        /// <returns>A list containing IDs of favorite lists</returns>
+        /// <response code="200">A list containing IDs of favorite lists which resource is part of.</response>
+        /// <response code="404">If entity is not found</response>
+        /// <response code="500">If an unexpected error occurs</response>
+        [ProducesResponseType(typeof(List<int>), 200)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        [HttpGet("favoritesList/resourceFavoritesLists/{userId}/{pidUri}")]
+        public async Task<IActionResult> GetResourceFavoritesList(Guid userId, string pidUri)
+        {
+            var getResourceFavoritesList = await _userService.GetResourceFavoritesList(userId, pidUri);
+            return Ok(getResourceFavoritesList);
+        }
+
+        /// <summary>
+        /// Updates the User Favorite List (eg. Name)
+        /// </summary>
+        /// <param name="userId">unique user id</param>
+        /// <param name="favoritesListId"> the favoritesListId to be changed.</param>
+        /// <param name="favoritesListDto">Favorite List Name to be changed.</param>
+        /// <remarks>
+        ///   <br><b>Note:</b>Only the List Name in the DTO is expected. Personal Note and PIDURI can be ignored</br>
+        /// </remarks>
+        /// <returns>The updated Favorite List Details</returns>
+        /// <response code="200">The updated Favorite List Deatils</response>
+        /// <response code="404">If entity is not found</response>
+        /// <response code="500">If an unexpected error occurs</response>
+        [ProducesResponseType(typeof(FavoritesList), 200)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        [HttpPut("favoritesList/{userId}/{favoritesListId}")]
+        [Consumes(MediaTypeNames.Application.Json)]
+        public async Task<IActionResult> SetFavoritesListName(Guid userId, int favoritesListId, [FromBody] FavoritesListDto favoritesListDto)
+        {
+            var updatedEntity = await _userService.SetFavoritesListName(userId, favoritesListId, favoritesListDto);
+            return Ok(updatedEntity);
+        }
+
+        /// <summary>
+        /// Updates the User Favorite List Entry (eg. Personal Note)
+        /// </summary>
+        /// <param name="userId">unique user id</param>
+        /// <param name="favoritesListEntryId"> the favoritesListEntryId to be changed.</param>
+        /// <param name="favoritesListDto">Favorite List Entry Note to be changed.</param>
+        /// <remarks>
+        ///   <br><b>Note:</b>Only the List Entry PersonalNote in the DTO is expected. List Name and PIDURI can be ignored</br>
+        /// </remarks>
+        /// <returns>The updated Favorite List Entry Details</returns>
+        /// <response code="200">The updated Favorite Entry List Deatils</response>
+        /// <response code="404">If entity is not found</response>
+        /// <response code="500">If an unexpected error occurs</response>
+        [ProducesResponseType(typeof(FavoritesList), 200)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        [HttpPut("favoritesListEntry/{userId}/{favoritesListEntryId}")]
+        [Consumes(MediaTypeNames.Application.Json)]
+        public async Task<IActionResult> SetFavoritesListEntryNote(Guid userId, int favoritesListEntryId, [FromBody] FavoritesListDto favoritesListDto)
+        {
+            var updatedEntity = await _userService.SetFavoritesListEntryNote(userId, favoritesListEntryId, favoritesListDto);
+            return Ok(updatedEntity);
+        }
+
+        /// <summary>
+        /// Deletes entire favorite list and all its corresponding entries.
+        /// </summary>
+        /// <param name="userId">unique user id</param>
+        /// <param name="favoritesListId"> the favorite list ID to be removed.</param>
+        /// <returns>Returns a user favorites lists according to the result</returns>
+        /// <response code="200">Returns a user favorites lists according to the result</response>
+        /// <response code="404">If entity is not found</response>
+        /// <response code="500">If an unexpected error occurs</response>
+        [HttpDelete("{userId}/favoritesList/{favoritesListId}")]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> RemoveFavoritesList(Guid userId, int favoritesListId)
+        {
+            var user = await _userService.RemoveFavoritesListAsync(userId, favoritesListId);
+            return Ok(user);
+        }
+
+        /// <summary>
+        /// Deletes a favorite list entry from a favorite list
+        /// </summary>
+        /// <param name="userId">unique user id</param>
+        /// <param name="favoritesListEntryId"> the favorite list entry ID to be removed.</param>
+        /// <returns>Returns a remaining entries according to the result</returns>
+        /// <response code="200">Returns remaining entries according to the result</response>
+        /// <response code="404">If entity is not found</response>
+        /// <response code="500">If an unexpected error occurs</response>
+        [HttpDelete("{userId}/favoritesListEntries/{favoritesListEntryId}")]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> RemoveFavoritesListEntry(Guid userId, int favoritesListEntryId)
+        {
+            var favoritesList = await _userService.RemoveFavoritesEntryAsync(userId, favoritesListEntryId);
+            return Ok(favoritesList);
+        }
+
+        /// <summary>
+        /// Delete multiple entries from favorites lists.
+        /// </summary>
+        /// <param name="userId">unique user id</param>
+        /// <param name="favoritesListEntriesId">the list ids entries to be removed </param>
+        /// <returns>A list containing an overview of FavoriteLists Names and its entries</returns>
+        /// <response code="200">A list containing an overview of FavoriteLists Names and its entries</response>
+        /// <response code="404">If entity is not found</response>
+        /// <response code="500">If an unexpected error occurs</response>
+        [ProducesResponseType(typeof(User), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        [HttpPost("removeFavoritesListEntries/{userId}")]
+        [Consumes(MediaTypeNames.Application.Json)]
+        public async Task<IActionResult> RemoveFavoritesListEntries(Guid userId, [FromBody] List<int> favoritesListEntriesId)
+        {
+            var user = await _userService.RemoveFavoritesListEntriesAsync(userId, favoritesListEntriesId);
+            return Ok(user);
+        }
+
+        #endregion [Favorites List]
     }
 }

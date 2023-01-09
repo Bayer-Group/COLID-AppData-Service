@@ -26,6 +26,8 @@ namespace COLID.AppDataService.Repositories.Context
         public virtual DbSet<MessageTemplate> MessageTemplates { get; set; }
         public virtual DbSet<MessageConfig> MessageConfigs { get; set; }
         public virtual DbSet<WelcomeMessage> WelcomeMessages { get; set; }
+        public virtual DbSet<FavoritesList> FavoritesLists { get; set; }
+        public virtual DbSet<FavoritesListEntry> FavoritesListEntries { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -82,6 +84,7 @@ namespace COLID.AppDataService.Repositories.Context
             modelBuilder.ApplyConfiguration(new StoredQueryConfiguration());
             modelBuilder.ApplyConfiguration(new MessageTemplateConfiguration());
             modelBuilder.ApplyConfiguration(new WelcomeMessageConfiguration());
+            modelBuilder.ApplyConfiguration(new FavoritesListConfiguration());
 
             // User configuration for cascade deletion
             modelBuilder.ApplyConfiguration(new UserConfiguration());

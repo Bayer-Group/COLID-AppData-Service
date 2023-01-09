@@ -76,6 +76,23 @@ namespace COLID.AppDataService.Services.Implementation
             return results;
         }
 
+        public Dictionary<string, int> GetAllSubscriptionsCount()
+        {
+            Dictionary<string, int> result = new Dictionary<string, int>();
+
+            var allUserSubscriptions = GetAll(null, "User")
+                .AsEnumerable()
+                .GroupBy(ce => ce.User)
+                .ToList();
+
+            foreach (var subscription in allUserSubscriptions)
+            {
+                result.Add(subscription.Key.Id.ToString(), subscription.Key.ColidEntrySubscriptions.Count());
+            }
+
+            return result;
+        }
+
         public void Delete(ColidEntrySubscriptionDto colidEntrySubscriptionDto)
         {
             Guard.IsNotNull(colidEntrySubscriptionDto);

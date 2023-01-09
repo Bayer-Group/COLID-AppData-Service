@@ -26,6 +26,11 @@ namespace COLID.AppDataService.Repositories.Configuration
                 .HasMany(u => u.ColidEntrySubscriptions)
                 .WithOne(c => c.User)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder
+                .HasMany(u => u.FavoritesLists)
+                .WithOne(c => c.User)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

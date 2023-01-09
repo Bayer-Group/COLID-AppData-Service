@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -21,6 +21,8 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using COLID.Graph.HashGenerator.Services;
 using System.Globalization;
+using System.Web;
+using Common.DataModels.TransferObjects;
 
 namespace COLID.AppDataService.Services.Implementation
 {
@@ -394,6 +396,26 @@ namespace COLID.AppDataService.Services.Implementation
             }
 
             return users.ToList();
+        }
+
+        public async Task<Dictionary<string, int>> GetSearchFiltersDataMarketplaceCount()
+        {
+            Dictionary<string, int> result = new Dictionary<string, int>();
+            var users = await GetAllAsync(null, nameof(User.SearchFiltersDataMarketplace) + "," + nameof(User.SearchFiltersDataMarketplace) + ".StoredQuery");
+            users.ToList().ForEach(x => x.SearchFiltersDataMarketplace = x.SearchFiltersDataMarketplace.Where(y => y.StoredQuery.IsNotEmpty()).ToList());
+            users = users.Where(x => x.SearchFiltersDataMarketplace.IsNotNullAndEmpty());
+
+            if (users == null || !users.Any())
+            {
+                return new Dictionary<string, int>();
+            }
+
+            foreach (var user in users)
+            {
+                result.Add(user.Id.ToString(), user.SearchFiltersDataMarketplace.Count());
+            }
+
+            return result;
         }
 
         public async Task<ICollection<SearchFilterDataMarketplace>> GetSearchFiltersDataMarketplaceOnlyWithStoredQueriesAsync(Guid userId)
@@ -900,5 +922,319 @@ namespace COLID.AppDataService.Services.Implementation
             return false;
         }
         #endregion
+
+        #region FavoritesList
+        public async Task<User> AddFavoritesListAsync(Guid userId, FavoritesListDto favoritesListDto)
+        {
+            Guard.IsNotNull(userId);
+            Guard.IsNotNullOrEmpty(favoritesListDto.Name);
+            var user = await GetOneAsync(u => u.Id.Equals(userId), nameof(User.FavoritesLists) + "," + nameof(User.FavoritesLists) + ".FavoritesListEntries");
+            if (user.IsEmpty())
+            {
+                throw new EntityNotFoundException($"No user with the id {userId} exists", string.Empty);
+            }
+            //checking if the list name exists
+            var currentList = user.FavoritesLists.FirstOrDefault(list=> string.Equals(list.Name, favoritesListDto.Name, StringComparison.OrdinalIgnoreCase));
+            if (favoritesListDto.PIDUri == null && favoritesListDto.PersonalNote == null)
+            {
+                if (!currentList.IsEmpty())
+                {
+                    throw new EntityNotFoundException($"The given List {favoritesListDto.Name} already exists. Please provide PIDURIs and note to be added to the list", string.Empty);
+                }
+                else
+                {
+                    user.FavoritesLists.Add(new FavoritesList
+                    {
+                        Name = favoritesListDto.Name
+                    });
+                    Update(user);
+                    await SaveAsync();
+                    return user;
+                }
+
+            }
+
+            Guard.IsValidUri(new Uri(favoritesListDto.PIDUri));
+
+            var favoriteListEntry = new List<FavoritesListEntry>();
+            favoriteListEntry.Add(new FavoritesListEntry
+            {
+                PIDUri = favoritesListDto.PIDUri,
+                PersonalNote = favoritesListDto.PersonalNote,
+            });
+
+            if (currentList.IsEmpty())
+            {
+                user.FavoritesLists.Add(new FavoritesList
+                {
+                    Name = favoritesListDto.Name,
+                    FavoritesListEntries = favoriteListEntry
+                });
+            }
+            else
+            {
+                if (currentList.FavoritesListEntries.Any(fle => fle.PIDUri == favoritesListDto.PIDUri))
+                {
+                    throw new EntityNotFoundException($"The given PIDURI {favoritesListDto.PIDUri} already exists in the list", string.Empty);
+                }
+                //add item to current existing favorite list
+                currentList.FavoritesListEntries.Add(new FavoritesListEntry
+                {
+                    PIDUri = favoritesListDto.PIDUri,
+                    PersonalNote = favoritesListDto.PersonalNote,
+                });
+            }
+            Update(user);
+            await SaveAsync();
+            return user;
+        }
+
+        public async Task<List<FavoritesList>> AddFavoritesListEntriesAsync(Guid userId, List<FavoritesListEntriesDTO> favoritesListEntriesDto)
+        {
+            var favoriteListEntriesResponse = new List<FavoritesList>();
+
+            foreach (var entry in favoritesListEntriesDto) 
+            {
+               var entryResponse = await AddFavoritesListEntryPerID(userId, entry.favoritesListId, new FavoritesListDto { Name = string.Empty, PersonalNote = entry.PersonalNote, PIDUri = entry.PIDUri });
+                favoriteListEntriesResponse.Add(entryResponse);
+            }
+
+            return favoriteListEntriesResponse;
+        }
+
+        public async Task<FavoritesList> AddFavoritesListEntryPerID(Guid userId, int favoritesListId, FavoritesListDto favoritesListDto)
+        {
+            Guard.IsNotNull(userId);
+            Guard.IsValidUri(new Uri(favoritesListDto.PIDUri));
+            var user = await GetOneAsync(u => u.Id.Equals(userId), nameof(User.FavoritesLists) + "," + nameof(User.FavoritesLists) + ".FavoritesListEntries");
+            if (user.IsEmpty())
+            {
+                throw new EntityNotFoundException($"No user with the id {userId} exists", string.Empty);
+            }
+            var favoritesList = user.FavoritesLists.FirstOrDefault(fl => fl.Id.Equals(favoritesListId));
+            if (favoritesList.IsEmpty())
+            {
+                throw new EntityNotFoundException($"The given favorite list id {favoritesListId} does not exist", string.Empty);
+            }
+            if (favoritesList.FavoritesListEntries.Any(fle => fle.PIDUri == favoritesListDto.PIDUri))
+            {
+                throw new EntityNotFoundException($"The given PIDURI {favoritesListDto.PIDUri} already exists in the list", string.Empty);
+            }
+            favoritesList.FavoritesListEntries.Add(new FavoritesListEntry
+            {
+                PIDUri = favoritesListDto.PIDUri,
+                PersonalNote = favoritesListDto.PersonalNote,
+            });
+            Update(user);
+            await SaveAsync();
+            return favoritesList;
+        }
+
+
+        public async Task<List<FavoritesList>> GetFavoritesListsAsync(Guid userId)
+        {
+            Guard.IsNotNull(userId);
+            var user = await GetOneAsync(u => u.Id.Equals(userId), nameof(User.FavoritesLists) + "," + nameof(User.FavoritesLists) + ".FavoritesListEntries");
+            if (user.IsEmpty())
+            {
+                throw new EntityNotFoundException($"No user with the id {userId} exists", string.Empty);
+            }
+
+            return user.FavoritesLists.ToList();
+        }
+
+        public async Task<Dictionary<string, int>> GetAllFavoritesListCount()
+        {
+            Dictionary<string, int> result = new Dictionary<string, int>();
+            
+            var allFavList = await GetAllAsync(null, "FavoritesLists.FavoritesListEntries");
+
+            foreach (var fav in allFavList)
+            {
+                result.Add(fav.Id.ToString(), fav.FavoritesLists.Count());
+            }
+
+            return result;
+        }
+
+        public async Task<List<string>> GetFavoritesListPIDUris(Guid userId)
+        {
+            Guard.IsNotNull(userId);
+            var user = await GetOneAsync(u => u.Id.Equals(userId), nameof(User.FavoritesLists) + "," + nameof(User.FavoritesLists) + ".FavoritesListEntries");
+            if (user.IsEmpty())
+            {
+                throw new EntityNotFoundException($"No user with the id {userId} exists", string.Empty);
+            }
+            if (!user.FavoritesLists.Any())
+            {
+                throw new EntityNotFoundException($"The given user has no favorites lists", string.Empty);
+            }
+            var favoritesListEntries = user.FavoritesLists.SelectMany(fl => fl.FavoritesListEntries).ToList();
+            var favoritesListPIDUris = favoritesListEntries.Select(fle=>fle.PIDUri).Distinct().ToList();
+
+            return favoritesListPIDUris;
+        }
+
+        public async Task<IDictionary<string, JObject>> GetFavoritesListDetails(Guid userId, int favoritesListId)
+        {
+            Guard.IsNotNull(userId);
+            var user = await GetOneAsync(u => u.Id.Equals(userId), nameof(User.FavoritesLists) + "," + nameof(User.FavoritesLists) + ".FavoritesListEntries");
+            if (user.IsEmpty())
+            {
+                throw new EntityNotFoundException($"No user with the id {userId} exists", string.Empty);
+            }
+            if (!user.FavoritesLists.Any())
+            {
+                throw new EntityNotFoundException($"The given user has no favorites lists", string.Empty);
+            }
+            var favoritesList = user.FavoritesLists.FirstOrDefault(fl=>fl.Id.Equals(favoritesListId));
+            if (favoritesList.IsEmpty())
+            {
+                throw new EntityNotFoundException($"The given favorite list id {favoritesListId} has no entries", string.Empty);
+            }
+            var favoritesListName = favoritesList.Name;
+            var favoritesListPIDUris = favoritesList.FavoritesListEntries.Select(fle => fle.PIDUri).Distinct().ToList();
+            try
+            {
+                var elasticPIDURIsresponse = await _remoteSearchService.GetDocumentsByIds(favoritesListPIDUris);
+                if (elasticPIDURIsresponse.Count > 0)
+                {
+                    IDictionary<string, JObject> resourceContents = new Dictionary<string, JObject>();
+
+                    foreach (var pidUri in favoritesListPIDUris)
+                    {
+                        string EncodedPIDUri = HttpUtility.UrlEncode(pidUri);
+                        var PIDUriData = elasticPIDURIsresponse[EncodedPIDUri].LastOrDefault();
+                        if (PIDUriData!=null)
+                        {
+                            PIDUriData.Add(new JProperty("EntryId", favoritesList.FavoritesListEntries.Where(fle => fle.PIDUri == pidUri).Select(fle => fle.Id)));
+                            PIDUriData.Add(new JProperty("PersonalNote", favoritesList.FavoritesListEntries.Where(fle => fle.PIDUri == pidUri).Select(fle => fle.PersonalNote)));
+
+                        }
+                        resourceContents.Add(pidUri, PIDUriData);
+                    }
+                    return resourceContents;
+                }
+            }
+            catch (System.Exception ex)
+            {
+                _logger.LogError("Response from search service GetDocumentsByIds: + Exception StackTrace: " + ex.StackTrace, "Exception Message: " + ex.Message);
+                _logger.LogError(JsonConvert.SerializeObject(ex));
+                return new Dictionary<string, JObject>();
+            }
+            return new Dictionary<string, JObject>();
+        }
+        public async Task<List<int>> GetResourceFavoritesList(Guid userId, string pidUri)
+        {
+            Guard.IsNotNull(userId);
+            var user = await GetOneAsync(u => u.Id.Equals(userId), nameof(User.FavoritesLists) + "," + nameof(User.FavoritesLists) + ".FavoritesListEntries");
+            if (user.IsEmpty())
+            {
+                throw new EntityNotFoundException($"No user with the id {userId} exists", string.Empty);
+            }
+            if (!user.FavoritesLists.Any())
+            {
+                throw new EntityNotFoundException($"The given user has no favorites lists", string.Empty);
+            }
+            var favoritesListEntries = user.FavoritesLists.SelectMany(fl => fl.FavoritesListEntries).Where(fl=>fl.PIDUri.Equals(HttpUtility.UrlDecode(pidUri))).ToList();
+            var favoritesListIDs = favoritesListEntries.Select(fle => fle.FavoritesLists.Id).Distinct().ToList();
+
+            return favoritesListIDs;
+        }
+
+        public async Task<FavoritesList> SetFavoritesListName(Guid userId, int favoritesListId, FavoritesListDto favoritesListDto)
+        {
+            Guard.IsNotNull(userId);
+            var user = await GetOneAsync(u => u.Id.Equals(userId), nameof(User.FavoritesLists));
+            if (user.IsEmpty())
+            {
+                throw new EntityNotFoundException($"No user with the id {userId} exists", string.Empty);
+            }
+            if (!user.FavoritesLists.Any())
+            {
+                throw new EntityNotFoundException($"The given user has no favorites lists", string.Empty);
+            }
+            var favoritesList = user.FavoritesLists.FirstOrDefault(fl => fl.Id.Equals(favoritesListId));
+            if (favoritesList.IsEmpty() || favoritesList==null)
+            {
+                throw new EntityNotFoundException($"The given favorite list id {favoritesListId} does not exist for user", string.Empty);
+            }
+            favoritesList.Name = favoritesListDto.Name;
+            Update(user);
+            await SaveAsync();
+            return favoritesList;
+        }
+
+        public async Task<FavoritesListEntry> SetFavoritesListEntryNote(Guid userId, int favoritesListEntryId, FavoritesListDto favoritesListDto)
+        {
+            Guard.IsNotNull(userId);
+            var user = await GetOneAsync(u => u.Id.Equals(userId), nameof(User.FavoritesLists) + "," + nameof(User.FavoritesLists) + ".FavoritesListEntries");
+            if (user.IsEmpty())
+            {
+                throw new EntityNotFoundException($"No user with the id {userId} exists", string.Empty);
+            }
+            if (!user.FavoritesLists.Any())
+            {
+                throw new EntityNotFoundException($"The given user has no favorites lists", string.Empty);
+            }
+            var favoritesListEntry = user.FavoritesLists.SelectMany(fle => fle.FavoritesListEntries).Where(fle => fle.Id.Equals(favoritesListEntryId)).FirstOrDefault();
+            if (favoritesListEntry.IsEmpty())
+            {
+                throw new EntityNotFoundException($"The given favorite list entry {favoritesListEntryId} for user {userId} doesn't exist", string.Empty);
+            }
+            favoritesListEntry.PersonalNote = favoritesListDto.PersonalNote;
+            Update(user);
+            await SaveAsync();
+            return favoritesListEntry;
+        }
+
+        public async Task<User> RemoveFavoritesListAsync(Guid userId, int favoritesListId)
+        {
+            Guard.IsNotNull(userId);
+            var user = await GetOneAsync(u => u.Id.Equals(userId), nameof(User.FavoritesLists));
+            if (user.IsEmpty())
+            {
+                throw new EntityNotFoundException($"No user with the id {userId} exists", string.Empty);
+            }
+            var favoritesList = user.FavoritesLists.FirstOrDefault(fl => fl.Id.Equals(favoritesListId));
+            if (favoritesList.IsEmpty())
+            {
+                throw new EntityNotFoundException($"The given favorite list id {favoritesListId} for user {userId} doesn't exist", string.Empty);
+            }
+            _repo.Delete(favoritesList);
+            await SaveAsync();
+            return user;
+
+        }
+        public async Task<List<FavoritesList>> RemoveFavoritesEntryAsync(Guid userId, int favoritesListEntryId)
+        {
+            Guard.IsNotNull(userId);
+            var user = await GetOneAsync(u => u.Id.Equals(userId), nameof(User.FavoritesLists) + "," + nameof(User.FavoritesLists) + ".FavoritesListEntries");
+            if (user.IsEmpty())
+            {
+                throw new EntityNotFoundException($"No user with the id {userId} exists", string.Empty);
+            }
+            var favoritesListEntry = user.FavoritesLists.SelectMany(fle => fle.FavoritesListEntries).Where(fle => fle.Id.Equals(favoritesListEntryId)).FirstOrDefault();
+            if (favoritesListEntry.IsEmpty())
+            {
+                throw new EntityNotFoundException($"The given favorite list entry {favoritesListEntryId} for user {userId} doesn't exist", string.Empty);
+            }
+            _repo.Delete(favoritesListEntry);
+            await SaveAsync();
+            return user.FavoritesLists.ToList();
+        }
+
+        public async Task<List<FavoritesList>> RemoveFavoritesListEntriesAsync(Guid userId, List<int> favoritesListEntriesId)
+        {
+            var favoriteListEntriesResponse = new List<FavoritesList>();
+
+            foreach (var entryId in favoritesListEntriesId)
+            {
+                 favoriteListEntriesResponse = await RemoveFavoritesEntryAsync(userId, entryId);
+            }
+
+            return favoriteListEntriesResponse;
+        }
+        #endregion FavoritesList
     }
 }
