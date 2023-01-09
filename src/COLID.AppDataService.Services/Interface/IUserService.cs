@@ -5,6 +5,7 @@ using COLID.AppDataService.Common.DataModel;
 using COLID.AppDataService.Common.DataModels.TransferObjects;
 using COLID.AppDataService.Common.Exceptions;
 using COLID.AppDataService.Common.Search;
+using Common.DataModels.TransferObjects;
 using Newtonsoft.Json.Linq;
 
 namespace COLID.AppDataService.Services.Interface
@@ -225,7 +226,13 @@ namespace COLID.AppDataService.Services.Interface
         /// Get all subscribed data market search filter of all users.
         /// </summary>
         Task<ICollection<User>> GetAllSearchFiltersDataMarketplaceOnlyWithStoredQueriesAsync();
+
+        /// <summary>
+        /// Get all subscribed data market search filter of all users.
+        /// </summary>
+        Task<Dictionary<string, int>> GetSearchFiltersDataMarketplaceCount();
         
+
         /// <summary>
         /// Get all user related subscription on COLID entries. The user will be identified by the given ID.
         /// </summary>
@@ -349,5 +356,125 @@ namespace COLID.AppDataService.Services.Interface
         /// <exception cref="ArgumentNullException">if the userId is null</exception>
         /// <exception cref="EntityNotFoundException">in case that no user or message was found for the given ids</exception>
         Task<MessageDto> MarkMessageAsSentAsync(Guid userId, int messageId);
+
+        /// <summary>
+        /// Creates an entry for user favorite list.
+        /// </summary>
+        /// <param name="userId">The user to add entry for</param>
+        /// <param name="favoritesListDto">the favorites List piduris and name entries</param>
+        /// <exception cref="ArgumentNullException">if the userId or dto is null</exception>
+        /// <exception cref="EntityNotFoundException">in case that no user was found for the given id</exception>
+        Task<User> AddFavoritesListAsync(Guid userId, FavoritesListDto favoritesListDto);
+
+        /// <summary>
+        /// Creates a favorite list entry for the user favorite list.
+        /// </summary>
+        /// <param name="userId">The user to add entry for</param>
+        /// <param name="favoritesListId">the favorites list Id for which entry needs to be created</param>
+        /// <param name="favoritesListDto">the favorites List piduris and name entries</param>
+        /// <exception cref="ArgumentNullException">if the userId or dto is null</exception>
+        /// <exception cref="EntityNotFoundException">in case that no user was found for the given id</exception>
+
+        /// <summary>
+        /// Insert multiple entries into favorites lists.
+        /// </summary>
+        /// <param name="userId">unique user id</param>
+        /// <param name="favoritesListEntriesDto">the list id. PIDURIs of the entries to be added </param>
+        /// <returns>A list containing an overview of FavoriteLists Names and its entries</returns>
+        /// <response code="200">A list containing an overview of FavoriteLists Names and its entries</response>
+        /// <response code="404">If entity is not found</response>
+        /// <response code="500">If an unexpected error occurs</response>
+        Task<List<FavoritesList>> AddFavoritesListEntriesAsync(Guid userId, List<FavoritesListEntriesDTO> favoritesListEntriesDto);
+
+        Task<FavoritesList> AddFavoritesListEntryPerID(Guid userId, int favoritesListId, FavoritesListDto favoritesListDto);
+        
+        /// <summary>
+        /// Fetches all user favorites lists.
+        /// </summary>
+        /// <param name="userId">The user Id</param>
+        /// <exception cref="ArgumentNullException">if the userId or dto is null</exception>
+        /// <exception cref="EntityNotFoundException">in case that no user was found for the given id</exception>
+        Task<List<FavoritesList>> GetFavoritesListsAsync(Guid userId);
+
+        /// <summary>
+        /// Fetches all favorites lists.
+        /// </summary>
+        /// <returns></returns>
+        Task<Dictionary<string, int>> GetAllFavoritesListCount();
+
+        /// <summary>
+        /// Fetches all user favorites lists including only the IDs of the contained resources.
+        /// </summary>
+        /// <param name="userId">The user Id</param>
+        /// <exception cref="ArgumentNullException">if the userId or dto is null</exception>
+        /// <exception cref="EntityNotFoundException">in case that no user was found for the given id</exception>
+        Task<List<string>> GetFavoritesListPIDUris(Guid userId);
+
+        /// <summary>
+        /// Fetches user's favorite list including its contents with full details.
+        /// </summary>
+        /// <param name="userId">The user Id</param>
+        /// <param name="favoritesListId">The favorite list Id for</param>
+        /// <exception cref="ArgumentNullException">if the userId or dto is null</exception>
+        /// <exception cref="EntityNotFoundException">in case that no user was found for the given id</exception>
+        Task<IDictionary<string, JObject>> GetFavoritesListDetails(Guid userId, int favoritesListId);
+
+        /// <summary>
+        /// Fetches the IDs of lists in which a specific resouce is in.
+        /// </summary>
+        /// <param name="userId">The user Id</param>
+        /// <param name="pidUri">The PID URI</param>
+        /// <exception cref="ArgumentNullException">if the userId or dto is null</exception>
+        /// <exception cref="EntityNotFoundException">in case that no user was found for the given id</exception>
+        Task<List<int>> GetResourceFavoritesList(Guid userId, string pidUri);
+
+        /// <summary>
+        /// Edits a user Favorite list (e.g. for changing the name)
+        /// </summary>
+        /// <param name="userId">The user Id</param>
+        /// <param name="favoritesListId">The Favorite List Id to be changed</param>
+        /// <param name="favoritesListDto">The new name to be updated will be part of the DTO</param>
+        /// <exception cref="ArgumentNullException">if the userId or dto is null</exception>
+        /// <exception cref="EntityNotFoundException">in case that no user was found for the given id</exception>
+        Task<FavoritesList> SetFavoritesListName(Guid userId, int favoritesListId, FavoritesListDto favoritesListDto);
+
+        /// <summary>
+        /// Edits a user Favorite list Entry (e.g. for changing the personal Note)
+        /// </summary>
+        /// <param name="userId">The user Id</param>
+        /// <param name="favoritesListEntryId">The Favorite List Entry Id to be changed</param>
+        /// <param name="favoritesListDto">The personal note to be updated will be part of the DTO</param>
+        /// <exception cref="ArgumentNullException">if the userId or dto is null</exception>
+        /// <exception cref="EntityNotFoundException">in case that no user was found for the given id</exception>
+        Task<FavoritesListEntry> SetFavoritesListEntryNote(Guid userId, int favoritesListEntryId, FavoritesListDto favoritesListDto);
+
+        /// <summary>
+        /// Deletes a user Favorite list
+        /// </summary>
+        /// <param name="userId">The user Id</param>
+        /// <param name="favoritesListId">The Favorite List Id to be removed</param>
+        /// <exception cref="ArgumentNullException">if the userId or dto is null</exception>
+        /// <exception cref="EntityNotFoundException">in case that no user was found for the given id</exception>
+        Task<User> RemoveFavoritesListAsync(Guid userId, int favoritesListId);
+
+        /// <summary>
+        /// Removes a user Favorite list Entry
+        /// </summary>
+        /// <param name="userId">The user Id</param>
+        /// <param name="favoritesListEntryId">The Favorite List Entry Id to be removed</param>
+        /// <exception cref="ArgumentNullException">if the userId or dto is null</exception>
+        /// <exception cref="EntityNotFoundException">in case that no user was found for the given id</exception>
+        Task<List<FavoritesList>> RemoveFavoritesEntryAsync(Guid userId, int favoritesListEntryId);
+
+        /// <summary>
+        /// Delete multiple entries into favorites lists.
+        /// </summary>
+        /// <param name="userId">unique user id</param>
+        /// <param name="favoritesListEntriesId">the list ids entries to be removed </param>
+        /// <returns>A list containing an overview of FavoriteLists Names and its remaining entries</returns>
+        /// <response code="200">A list containing an overview of FavoriteLists Names and its entries</response>
+        /// <response code="404">If entity is not found</response>
+        /// <response code="500">If an unexpected error occurs</response>
+        Task<List<FavoritesList>> RemoveFavoritesListEntriesAsync(Guid userId, List<int> favoritesListEntriesId);
     }
 }

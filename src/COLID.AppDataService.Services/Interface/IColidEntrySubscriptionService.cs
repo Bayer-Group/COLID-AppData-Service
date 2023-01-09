@@ -42,5 +42,11 @@ namespace COLID.AppDataService.Services.Interface
         /// <param name="colidPidUris">list of COLID entry PID URIs</param>
         /// <return>list of PID URIs and their number of subscriptions</return>
         IList<ColidEntrySubscriptionAmountDto> GetColidPidUrisAndAmountSubscriptions(ISet<Uri> colidPidUris);
+
+        /// <summary>
+        /// Fetches all users Subscriptions count
+        /// </summary>
+        /// <return>list of UserId and subscriptions count</return>
+        Dictionary<string, int> GetAllSubscriptionsCount();
     }
 }

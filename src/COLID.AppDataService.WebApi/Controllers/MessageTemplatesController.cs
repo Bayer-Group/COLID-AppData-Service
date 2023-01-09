@@ -10,7 +10,6 @@ using Microsoft.Extensions.Logging;
 
 namespace COLID.AppDataService.Controllers
 {
-    [Authorize(Roles = ApplicationRoles.Administration)]
     [ApiController]
     [Route("api/[controller]")]
     [Consumes(MediaTypeNames.Application.Json)]

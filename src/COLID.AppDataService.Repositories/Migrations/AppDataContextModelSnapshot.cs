@@ -79,6 +79,78 @@ namespace Repositories.Migrations
                     b.ToTable("consumer_groups");
                 });
 
+            modelBuilder.Entity("COLID.AppDataService.Common.DataModel.FavoritesList", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnName("id")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnName("created_at")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnName("modified_at")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Name")
+                        .HasColumnName("name")
+                        .HasColumnType("longtext CHARACTER SET utf8mb4");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnName("user_id")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id")
+                        .HasName("pk_favorites_lists");
+
+                    b.HasIndex("Id")
+                        .IsUnique()
+                        .HasName("ix_favorites_lists_id");
+
+                    b.HasIndex("UserId")
+                        .HasName("ix_favorites_lists_user_id");
+
+                    b.ToTable("favorites_lists");
+                });
+
+            modelBuilder.Entity("COLID.AppDataService.Common.DataModel.FavoritesListEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnName("id")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnName("created_at")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("FavoritesListId")
+                        .HasColumnName("favorites_list_id")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnName("modified_at")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("PIDUri")
+                        .HasColumnName("piduri")
+                        .HasColumnType("longtext CHARACTER SET utf8mb4");
+
+                    b.Property<string>("PersonalNote")
+                        .HasColumnName("personal_note")
+                        .HasColumnType("longtext CHARACTER SET utf8mb4");
+
+                    b.HasKey("Id")
+                        .HasName("pk_favorites_list_entries");
+
+                    b.HasIndex("FavoritesListId")
+                        .HasName("ix_favorites_list_entries_favorites_list_id");
+
+                    b.ToTable("favorites_list_entries");
+                });
+
             modelBuilder.Entity("COLID.AppDataService.Common.DataModel.Message", b =>
                 {
                     b.Property<int>("Id")
@@ -414,6 +486,24 @@ namespace Repositories.Migrations
                         .WithMany("ColidEntrySubscriptions")
                         .HasForeignKey("UserId")
                         .HasConstraintName("fk_colid_entry_subscriptions_users_user_id")
+                        .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("COLID.AppDataService.Common.DataModel.FavoritesList", b =>
+                {
+                    b.HasOne("COLID.AppDataService.Common.DataModel.User", "User")
+                        .WithMany("FavoritesLists")
+                        .HasForeignKey("UserId")
+                        .HasConstraintName("fk_favorites_lists_users_user_id")
+                        .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("COLID.AppDataService.Common.DataModel.FavoritesListEntry", b =>
+                {
+                    b.HasOne("COLID.AppDataService.Common.DataModel.FavoritesList", "FavoritesLists")
+                        .WithMany("FavoritesListEntries")
+                        .HasForeignKey("FavoritesListId")
+                        .HasConstraintName("fk_favorites_list_entries_favorites_lists_favorites_list_id")
                         .OnDelete(DeleteBehavior.Cascade);
                 });
 

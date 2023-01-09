@@ -78,5 +78,15 @@ namespace COLID.AppDataService.Controllers
             var colidEntrySubscriptionAmountDto = _colidEntrySubscriptionService.GetColidPidUrisAndAmountSubscriptions(colidPidUris);
             return Ok(colidEntrySubscriptionAmountDto);
         }
+
+        /// <summary>
+        /// Get all subscriptions per user and return the result.
+        /// </summary>
+        [HttpGet("GetAllSubscriptionsCount")]
+        public IActionResult GetAllSubscriptionsCount()
+        {
+            var colidAllSubscriptis = _colidEntrySubscriptionService.GetAllSubscriptionsCount();
+            return Ok(colidAllSubscriptis);
+        }
     }
 }

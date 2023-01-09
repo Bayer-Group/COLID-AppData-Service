@@ -31,5 +31,8 @@ namespace COLID.AppDataService.Common.DataModel
         public virtual ICollection<Message> Messages { get; set; }
 
         public virtual MessageConfig MessageConfig { get; set; }
+
+        public ICollection<FavoritesList> FavoritesLists { get; set; }
+
     }
 }

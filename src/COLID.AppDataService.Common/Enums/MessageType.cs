@@ -6,6 +6,8 @@
         ColidEntrySubscriptionDelete,
         StoredQueryResult,
         InvalidUserWarning,
-        InvalidDistributionEndpointTargetUri
+        InvalidDistributionEndpointTargetUri,
+        ReviewDueWarning,
+        ReviewDeprecatedNotification
     }
 }
