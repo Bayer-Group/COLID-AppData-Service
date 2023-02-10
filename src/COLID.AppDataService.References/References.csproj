@@ -15,10 +15,10 @@
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="10.1.1" />
     <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="8.1.0" />
-    <PackageReference Include="COLID.Cache" Version="2.0.145" />
+    <PackageReference Include="COLID.Cache" Version="2.0.1074" />
     <PackageReference Include="COLID.Common" Version="2.0.145" />
     <PackageReference Include="COLID.Exception" Version="2.0.145" />
-    <PackageReference Include="COLID.Graph" Version="2.0.145" />
+    <PackageReference Include="COLID.Graph" Version="2.0.1074" />
     <PackageReference Include="COLID.Identity" Version="2.0.145" />
     <PackageReference Include="COLID.Swagger" Version="2.0.145" />
     <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.7" />

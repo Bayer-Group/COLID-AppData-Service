@@ -23,6 +23,8 @@ using COLID.Graph.HashGenerator.Services;
 using System.Globalization;
 using System.Web;
 using Common.DataModels.TransferObjects;
+using System.IO;
+using Microsoft.Extensions.Configuration;
 
 namespace COLID.AppDataService.Services.Implementation
 {
@@ -35,6 +37,15 @@ namespace COLID.AppDataService.Services.Implementation
 
         private readonly IMapper _mapper;
         private readonly ILogger<UserService> _logger;
+
+        private static readonly string _basePath = Path.GetFullPath("appsettings.json");
+        private static readonly string _filePath = _basePath.Substring(0, _basePath.Length - 16);
+        private static IConfigurationRoot configuration = new ConfigurationBuilder()
+                     .SetBasePath(_filePath)
+                    .AddJsonFile("appsettings.json")
+                    .Build();
+        private static readonly string _serviceUrl = configuration.GetValue<string>("ServiceUrl");
+        private static readonly string _httpServiceUrl = configuration.GetValue<string>("HttpServiceUrl");
 
         private readonly ISet<string> _includeProperties = new HashSet<string>
         {
@@ -889,14 +900,14 @@ namespace COLID.AppDataService.Services.Implementation
             var newPids = new List<string>();
             foreach(SearchHit hit in hits)
             { 
-                var lastChangeString = JObject.Parse(hit.Source.GetValueOrDefault("https://pid.bayer.com/kos/19050/lastChangeDateTime").ToString()).ToObject<DocumentMapDirection>().outbound.FirstOrDefault().value;
-                var dateCreatedString = JObject.Parse(hit.Source.GetValueOrDefault("https://pid.bayer.com/kos/19050/dateCreated").ToString()).ToObject<DocumentMapDirection>().outbound.FirstOrDefault().value;
+                var lastChangeString = JObject.Parse(hit.Source.GetValueOrDefault(_serviceUrl + "kos/19050/lastChangeDateTime").ToString()).ToObject<DocumentMapDirection>().outbound.FirstOrDefault().value;
+                var dateCreatedString = JObject.Parse(hit.Source.GetValueOrDefault(_serviceUrl + "kos/19050/dateCreated").ToString()).ToObject<DocumentMapDirection>().outbound.FirstOrDefault().value;
                 var lastChangeDate = DateTime.ParseExact(lastChangeString, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture);
                 var dateCreatedDate = DateTime.ParseExact(dateCreatedString, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture);
 
                 if(dateCreatedDate > storedQueryLatestExecutionDate || lastChangeDate > storedQueryLatestExecutionDate)
                 {
-                    var pidUri = JObject.Parse(hit.Source.GetValueOrDefault("http://pid.bayer.com/kos/19014/hasPID").ToString()).ToObject<DocumentMapDirection>().outbound.FirstOrDefault().value;
+                    var pidUri = JObject.Parse(hit.Source.GetValueOrDefault(_httpServiceUrl + "kos/19014/hasPID").ToString()).ToObject<DocumentMapDirection>().outbound.FirstOrDefault().value;
                     newPids.Add(pidUri);
                 }
             }
