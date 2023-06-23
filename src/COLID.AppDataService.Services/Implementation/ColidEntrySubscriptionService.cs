@@ -5,8 +5,8 @@ using COLID.AppDataService.Common.DataModel;
 using COLID.AppDataService.Common.DataModels.TransferObjects;
 using COLID.AppDataService.Common.Extensions;
 using COLID.AppDataService.Common.Utilities;
-using COLID.AppDataService.Repositories.Interface;
-using COLID.AppDataService.Services.Interface;
+using COLID.AppDataService.Repositories.Interfaces;
+using COLID.AppDataService.Services.Interfaces;
 using COLID.Exception.Models.Business;
 using Microsoft.Extensions.Logging;
 
@@ -93,14 +93,14 @@ namespace COLID.AppDataService.Services.Implementation
             return result;
         }
 
-        public void Delete(ColidEntrySubscriptionDto colidEntrySubscriptionDto)
+        public void Delete(ColidEntrySubscriptionDto dto)
         {
-            Guard.IsNotNull(colidEntrySubscriptionDto);
-            Guard.IsValidUri(colidEntrySubscriptionDto.ColidPidUri);
+            Guard.IsNotNull(dto);
+            Guard.IsValidUri(dto.ColidPidUri);
 
             var subscriptions = GetAll()
                 .AsEnumerable()
-                .Where(ce => ce.ColidPidUri.AbsoluteUri == colidEntrySubscriptionDto.ColidPidUri.AbsoluteUri)
+                .Where(ce => ce.ColidPidUri.AbsoluteUri == dto.ColidPidUri.AbsoluteUri)
                 .ToList();
 
             if (subscriptions.Any())

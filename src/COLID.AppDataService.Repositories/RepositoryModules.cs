@@ -1,6 +1,6 @@
-﻿using System;
+using System;
 using COLID.AppDataService.Repositories.Implementation;
-using COLID.AppDataService.Repositories.Interface;
+using COLID.AppDataService.Repositories.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -20,6 +20,7 @@ namespace COLID.AppDataService.Repositories
             }
 
             services.AddTransient<IGenericRepository, GenericRepository>();
+            services.AddTransient<IApplicationVersionRepository, ApplicationVersionRepository>();
 
             return services;
         }

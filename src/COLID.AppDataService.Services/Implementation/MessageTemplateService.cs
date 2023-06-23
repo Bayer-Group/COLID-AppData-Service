@@ -6,8 +6,8 @@ using COLID.AppDataService.Common.DataModels.TransferObjects;
 using COLID.AppDataService.Common.Enums;
 using COLID.AppDataService.Common.Exceptions;
 using COLID.AppDataService.Common.Utilities;
-using COLID.AppDataService.Repositories.Interface;
-using COLID.AppDataService.Services.Interface;
+using COLID.AppDataService.Repositories.Interfaces;
+using COLID.AppDataService.Services.Interfaces;
 using COLID.Cache.Services;
 using Microsoft.Extensions.Logging;
 
@@ -55,7 +55,8 @@ namespace COLID.AppDataService.Services.Implementation
             entity.Subject = messageTemplateDto.Subject;
             entity.Body = messageTemplateDto.Body;
             Save();
-            _cache.Delete(messageType.ToString());
+            _cache.Delete(messageType.ToString(), () => { });
+
 
             return entity;
         }
@@ -78,8 +79,8 @@ namespace COLID.AppDataService.Services.Implementation
             return TryGetOne(out entity, 
                 mt =>
                     mt.Type.Equals(dto.Type)
-                    && mt.Subject.Equals(dto.Subject)
-                    && mt.Body.Equals(dto.Body));
+                    && mt.Subject.Equals(dto.Subject, StringComparison.Ordinal)
+                    && mt.Body.Equals(dto.Body, StringComparison.Ordinal));
         }
 
         private bool TryGetOne(MessageType messageType, out MessageTemplate entity)

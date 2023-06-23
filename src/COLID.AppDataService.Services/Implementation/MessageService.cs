@@ -10,9 +10,9 @@ using COLID.AppDataService.Common.DataModels.TransferObjects;
 using COLID.AppDataService.Common.Enums;
 using COLID.AppDataService.Common.Extensions;
 using COLID.AppDataService.Common.Utilities;
-using COLID.AppDataService.Repositories.Interface;
-using COLID.AppDataService.Services.Graph.Interface;
-using COLID.AppDataService.Services.Interface;
+using COLID.AppDataService.Repositories.Interfaces;
+using COLID.AppDataService.Services.Graph.Interfaces;
+using COLID.AppDataService.Services.Interfaces;
 using COLID.Exception.Models.Business;
 using Common.DataModels.TransferObjects;
 using Microsoft.Extensions.Configuration;
@@ -82,8 +82,8 @@ namespace COLID.AppDataService.Services.Implementation
             {
                 var messageConfigForUser = await _userService.GetMessageConfigAsync(user.Id);
 
-                var subject = messageTemplate.Subject.Replace("%COLID_PID_URI%", colidPidUri).Replace("%COLID_LABEL%", colidLabel);
-                var body = messageTemplate.Body.Replace("%COLID_PID_URI%", colidPidUri).Replace("%COLID_LABEL%", colidLabel);
+                var subject = messageTemplate.Subject.Replace("%COLID_PID_URI%", colidPidUri, StringComparison.Ordinal).Replace("%COLID_LABEL%", colidLabel, StringComparison.Ordinal);
+                var body = messageTemplate.Body.Replace("%COLID_PID_URI%", colidPidUri, StringComparison.Ordinal).Replace("%COLID_LABEL%", colidLabel, StringComparison.Ordinal);
                 var message = CreateMessageDto(messageConfigForUser, subject, body);
 
                 await _userService.AddMessageAsync(user.Id, message);
@@ -92,29 +92,29 @@ namespace COLID.AppDataService.Services.Implementation
             return colidEntrySubscribedUsers.Count;
         }
 
-        public async Task CreateMessagesOfInvalidUsersForContact(ColidEntryContactInvalidUsersDto cec)
+        public async Task CreateMessagesOfInvalidUsersForContact(ColidEntryContactInvalidUsersDto colidEntryContactInvalidUsersDto)
         {
             // It is only possible to send messages to users who are already logged in to COLID, because
             // they are assigned to the user. Therefore external users must be created separately beforehand.
-            var userId = await CreateInitialUserForMessages(cec);
+            var userId = await CreateInitialUserForMessages(colidEntryContactInvalidUsersDto);
 
             var messageTemplate = _messageTemplateService.GetOne(MessageType.InvalidUserWarning);
             var messageConfigForUser = await _userService.GetMessageConfigAsync(userId);
 
             var messageList = new Collection<MessageDto>();
-            foreach (var entry in cec.ColidEntries)
+            foreach (var entry in colidEntryContactInvalidUsersDto.ColidEntries)
             {
-                var subject = messageTemplate.Subject.Replace("%COLID_PID_URI%", entry.PidUri.OriginalString).Replace("%COLID_LABEL%", entry.Label);
+                var subject = messageTemplate.Subject.Replace("%COLID_PID_URI%", entry.PidUri.OriginalString, StringComparison.Ordinal).Replace("%COLID_LABEL%", entry.Label, StringComparison.Ordinal);
                 var body = messageTemplate.Body
-                    .Replace("%COLID_PID_URI%", entry.PidUri.OriginalString)
-                    .Replace("%COLID_LABEL%", entry.Label)
-                    .Replace("%INVALID_USERS%", string.Join(", ", entry.InvalidUsers));
+                    .Replace("%COLID_PID_URI%", entry.PidUri.OriginalString, StringComparison.Ordinal)
+                    .Replace("%COLID_LABEL%", entry.Label, StringComparison.Ordinal)
+                    .Replace("%INVALID_USERS%", string.Join(", ", entry.InvalidUsers), StringComparison.Ordinal);
 
                 var message = CreateMessageDto(messageConfigForUser, subject, body);
                 messageList.Add(message);
             }
 
-            var _ = await _userService.AddMessagesAsync(userId, messageList);
+            await _userService.AddMessagesAsync(userId, messageList);
         }
 
         private static MessageDto CreateMessageDto(MessageConfig messageConfigForUser, string subject, string body)
@@ -157,7 +157,7 @@ namespace COLID.AppDataService.Services.Implementation
                                                                         && m.SendOn < DateTime.UtcNow;
             try
             {
-                var unreadMessages = Get(unreadMessagesFilter, null, nameof(Message.User))
+                var unreadMessages = GetEntities(unreadMessagesFilter, null, nameof(Message.User))
                     .OrderBy(m => m.User?.Id) // Required, because users can be null ...
                     .ToList();
 
@@ -186,7 +186,7 @@ namespace COLID.AppDataService.Services.Implementation
                                                                    && (m.ReadOn.HasValue || m.SendOn.HasValue);
             try
             {
-                var messagesToDelete = Get(expiredMessageFilter).ToList();
+                var messagesToDelete = GetEntities(expiredMessageFilter).ToList();
                 if (messagesToDelete.Any())
                 {
                     DeleteRange(messagesToDelete);
@@ -223,17 +223,15 @@ namespace COLID.AppDataService.Services.Implementation
             Guard.IsNotNull(message);
             Guard.IsValidEmail(message.UserEmail);
 
-            DebugMode(message);
-
             var messageTemplate = _messageTemplateService.GetOne(MessageType.InvalidDistributionEndpointTargetUri);
-            var user = _userService.GetOne(u => u.EmailAddress.Equals(message.UserEmail), nameof(User.MessageConfig));
+            var user = _userService.GetOne(u => u.EmailAddress.Equals(message.UserEmail, StringComparison.Ordinal), nameof(User.MessageConfig));
             var subject = messageTemplate.Subject
-                .Replace("%COLID_LABEL%", message.ResourceLabel);
+                .Replace("%COLID_LABEL%", message.ResourceLabel, StringComparison.Ordinal);
 
             var body = messageTemplate.Body
-                .Replace("%COLID_PID_URI%", message.ColidEntryPidUri)
-                .Replace("%DISTRIBUTION_ENDPOINT%", message.DistributionEndpoint.ToString())
-                .Replace("%COLID_LABEL%", message.ResourceLabel);
+                .Replace("%COLID_PID_URI%", message.ColidEntryPidUri, StringComparison.Ordinal)
+                .Replace("%DISTRIBUTION_ENDPOINT%", message.DistributionEndpoint.ToString(), StringComparison.Ordinal)
+                .Replace("%COLID_LABEL%", message.ResourceLabel, StringComparison.Ordinal);
 
             var messageForUser = CreateMessageDto(user.MessageConfig, subject, body);
             messageForUser.AdditionalInfo = string.Format("DistributionEndpoint: {0}", message.DistributionEndpointPidUri);
@@ -242,28 +240,35 @@ namespace COLID.AppDataService.Services.Implementation
             _logger.LogInformation($"Message added in the message list for {message.DistributionEndpointPidUri}");
         }
 
-        private void DebugMode(DistributionEndpointMessageDto message)
+        public async Task SendInvalidContactsMessageToUser(ColidEntryContactInvalidUsersDto cec)
         {
-            try
+            Guard.IsNotNull(cec);
+            Guard.IsValidEmail(cec.ContactMail);
+
+            var user = _userService.GetOne(u => u.EmailAddress.Equals(cec.ContactMail), nameof(User.MessageConfig));
+            var messageTemplate = _messageTemplateService.GetOne(MessageType.InvalidUserWarning);
+
+            var messageList = new Collection<MessageDto>();
+            foreach (var entry in cec.ColidEntries)
             {
-                if (_configuration.GetValue<bool>("DebugModeEndpointTest"))
-                {
-                    var emailAddress = _configuration.GetValue<string>("EndpointTestEmailAddress");
-                    Guard.IsValidEmail(emailAddress);
-                    message.UserEmail = emailAddress;
-                }
+                var subject = messageTemplate.Subject.Replace("%COLID_PID_URI%", entry.PidUri.OriginalString).Replace("%COLID_LABEL%", entry.Label);
+                var body = messageTemplate.Body
+                    .Replace("%COLID_PID_URI%", entry.PidUri.OriginalString)
+                    .Replace("%COLID_LABEL%", entry.Label)
+                    .Replace("%INVALID_USERS%", string.Join(", ", entry.InvalidUsers));
+
+                var message = CreateMessageDto(user.MessageConfig, subject, body);
+                messageList.Add(message);
             }
-            catch (System.Exception ex)
-            {
-                throw ex;
-            }
+
+            await _userService.AddMessagesAsync(user.Id, messageList);
         }
 
         /// <summary>
         /// 
         /// </summary>
         /// <param name="distributionEndpoints"></param>
-        public void DeleteByAdditionalInfo(List<Uri> distributionEndpoints)
+        public void DeleteByAdditionalInfo(IList<Uri> distributionEndpoints)
         {
             Guard.IsNotNull(distributionEndpoints);
 
@@ -271,7 +276,7 @@ namespace COLID.AppDataService.Services.Implementation
                 .AsEnumerable()
                   .Where(x =>
                     x.AdditionalInfo != null &&
-                    distributionEndpoints.Any(endpoint => x.AdditionalInfo.Contains(endpoint.ToString()))
+                    distributionEndpoints.Any(endpoint => x.AdditionalInfo.Contains(endpoint.ToString(), StringComparison.Ordinal))
                  );
 
             foreach (var message in matchingMessages)
@@ -288,7 +293,7 @@ namespace COLID.AppDataService.Services.Implementation
         /// </summary>
         /// <param name="distributionEndpoints"></param>
         /// <returns></returns>
-        public List<(Uri, DateTime)> GetByAdditionalInfo(List<Uri> distributionEndpoints)
+        public IList<(Uri, DateTime)> GetByAdditionalInfo(IList<Uri> distributionEndpoints)
         {
             Guard.IsNotNull(distributionEndpoints);
 
@@ -296,11 +301,11 @@ namespace COLID.AppDataService.Services.Implementation
                  .AsEnumerable()
                  .Where(x =>
                     x.AdditionalInfo != null &&
-                    distributionEndpoints.Any(endpoint => x.AdditionalInfo.Contains(endpoint.ToString()))
+                    distributionEndpoints.Any(endpoint => x.AdditionalInfo.Contains(endpoint.ToString(), StringComparison.Ordinal))
                  )
                  .Select(x =>
                  (
-                     distributionEndpoints.Single(endpoint => x.AdditionalInfo.Contains(endpoint.ToString())) //get field from free text and remove unwanted space and text
+                     distributionEndpoints.Single(endpoint => x.AdditionalInfo.Contains(endpoint.ToString(), StringComparison.Ordinal)) //get field from free text and remove unwanted space and text
                      , x.CreatedAt.Value
                  )).ToList();
 
@@ -319,7 +324,7 @@ namespace COLID.AppDataService.Services.Implementation
             Guard.IsNotEmpty(message.Body);
             Guard.IsValidEmail(message.UserEmail);
 
-            var user = _userService.GetOne(u => u.EmailAddress.Equals(message.UserEmail), nameof(User.MessageConfig));
+            var user = _userService.GetOne(u => u.EmailAddress.Equals(message.UserEmail, StringComparison.Ordinal), nameof(User.MessageConfig));
             var messageForUser = CreateMessageDto(user.MessageConfig, message.Subject, message.Body);
             _userService.AddMessage(user.Id, messageForUser);
         }

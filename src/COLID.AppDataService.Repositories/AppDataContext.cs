@@ -28,6 +28,7 @@ namespace COLID.AppDataService.Repositories.Context
         public virtual DbSet<WelcomeMessage> WelcomeMessages { get; set; }
         public virtual DbSet<FavoritesList> FavoritesLists { get; set; }
         public virtual DbSet<FavoritesListEntry> FavoritesListEntries { get; set; }
+        public virtual DbSet<ApplicationVersion> ApplicationVersions { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -88,6 +89,12 @@ namespace COLID.AppDataService.Repositories.Context
 
             // User configuration for cascade deletion
             modelBuilder.ApplyConfiguration(new UserConfiguration());
+
+
+
+            //Foreign key config for Application Version
+
+            modelBuilder.ApplyConfiguration(new ApplicationVersionConfiguration());
 
             // Enable snake_case for tables, columns, keys, constraints and indexes
             foreach (var entity in modelBuilder.Model.GetEntityTypes())

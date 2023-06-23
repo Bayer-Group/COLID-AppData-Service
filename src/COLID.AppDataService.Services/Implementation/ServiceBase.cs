@@ -6,8 +6,8 @@ using System.Text;
 using System.Threading.Tasks;
 using COLID.AppDataService.Common.DataModel;
 using COLID.AppDataService.Common.Extensions;
-using COLID.AppDataService.Repositories.Interface;
-using COLID.AppDataService.Services.Interface;
+using COLID.AppDataService.Repositories.Interfaces;
+using COLID.AppDataService.Services.Interfaces;
 using COLID.Exception.Models.Business;
 
 namespace COLID.AppDataService.Services.Implementation
@@ -16,7 +16,7 @@ namespace COLID.AppDataService.Services.Implementation
     {
         protected readonly IGenericRepository _repo;
 
-        public ServiceBase(IGenericRepository repo)
+        protected ServiceBase(IGenericRepository repo)
         {
             _repo = repo;
         }
@@ -26,9 +26,9 @@ namespace COLID.AppDataService.Services.Implementation
             string includeProperties = null,
             int? skip = null,
             int? take = null,
-            bool readOnly = false)
+            bool isReadOnly = false)
         {
-            return _repo.GetAll(orderBy, includeProperties, skip, take, readOnly);
+            return _repo.GetAll(orderBy, includeProperties, skip, take, isReadOnly);
         }
 
         public Task<IEnumerable<TEntity>> GetAllAsync(
@@ -36,20 +36,20 @@ namespace COLID.AppDataService.Services.Implementation
             string includeProperties = null,
             int? skip = null,
             int? take = null,
-            bool readOnly = false)
+            bool isReadOnly = false)
         {
-            return _repo.GetAllAsync(orderBy, includeProperties, skip, take, readOnly);
+            return _repo.GetAllAsync(orderBy, includeProperties, skip, take, isReadOnly);
         }
 
-        public IEnumerable<TEntity> Get(
+        public IEnumerable<TEntity> GetEntities(
             Expression<Func<TEntity, bool>> filter = null,
             Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>> orderBy = null,
             string includeProperties = null,
             int? skip = null,
             int? take = null,
-            bool readOnly = false)
+            bool isReadOnly = false)
         {
-            return _repo.Get(filter, orderBy, includeProperties, skip, take, readOnly);
+            return _repo.GetEntities(filter, orderBy, includeProperties, skip, take, isReadOnly);
         }
 
         public Task<IEnumerable<TEntity>> GetAsync(
@@ -58,17 +58,17 @@ namespace COLID.AppDataService.Services.Implementation
             string includeProperties = null,
             int? skip = null,
             int? take = null,
-            bool readOnly = false)
+            bool isReadOnly = false)
         {
-            return _repo.GetAsync(filter, orderBy, includeProperties, skip, take, readOnly);
+            return _repo.GetAsync(filter, orderBy, includeProperties, skip, take, isReadOnly);
         }
 
         public TEntity GetOne(
             Expression<Func<TEntity, bool>> filter = null,
             string includeProperties = null,
-            bool readOnly = false)
+            bool isReadOnly = false)
         {
-            var entity = _repo.GetOne(filter, includeProperties, readOnly);
+            var entity = _repo.GetOne(filter, includeProperties, isReadOnly);
             if (entity.IsEmpty())
             {
                 throw new EntityNotFoundException();
@@ -80,9 +80,9 @@ namespace COLID.AppDataService.Services.Implementation
         public async Task<TEntity> GetOneAsync(
             Expression<Func<TEntity, bool>> filter = null,
             string includeProperties = null,
-            bool readOnly = false)
+            bool isReadOnly = false)
         {
-            var entity = await _repo.GetOneAsync(filter, includeProperties, readOnly);
+            var entity = await _repo.GetOneAsync(filter, includeProperties, isReadOnly);
             if (entity.IsEmpty())
             {
                 throw new EntityNotFoundException($"Unable to find a {typeof(TEntity).FullName} for the given values");
@@ -94,9 +94,9 @@ namespace COLID.AppDataService.Services.Implementation
         public bool TryGetOne(out TEntity entity,
             Expression<Func<TEntity, bool>> filter = null,
             string includeProperties = null,
-            bool readOnly = false)
+            bool isReadOnly = false)
         {
-            return _repo.TryGetOne(out entity, filter, includeProperties, readOnly);
+            return _repo.TryGetOne(out entity, filter, includeProperties, isReadOnly);
         }
 
         public TEntity GetById(object id)

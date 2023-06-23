@@ -1,6 +1,6 @@
 ﻿using System;
 using COLID.AppDataService.Common.Constants;
-using COLID.AppDataService.Services.Interface;
+using COLID.AppDataService.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

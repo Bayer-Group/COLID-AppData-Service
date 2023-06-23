@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net.Http;
 using AutoMapper;
 using COLID.AppDataService.Common.AutoMapper;
 using COLID.AppDataService.Repositories;
@@ -44,7 +45,14 @@ namespace COLID.AppDataService
         {
             services.AddHttpContextAccessor();
             services.AddTransient<IHttpContextAccessor, HttpContextAccessor>();
-            services.AddHttpClient();
+            services.AddHttpClient("NoProxy").ConfigurePrimaryHttpMessageHandler(() =>
+            {
+                return new HttpClientHandler
+                {
+                    UseProxy = false,
+                    Proxy = null
+                };
+            });
 
             services.AddDefaultCorrelationId();
             services.AddCorrelationIdLogger();

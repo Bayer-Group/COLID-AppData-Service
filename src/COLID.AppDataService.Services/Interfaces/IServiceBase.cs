@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using COLID.AppDataService.Common.DataModel;
 
-namespace COLID.AppDataService.Services.Interface
+namespace COLID.AppDataService.Services.Interfaces
 {
     public interface IServiceBase<TEntity> where TEntity : class, IEntity
     {
@@ -14,22 +14,22 @@ namespace COLID.AppDataService.Services.Interface
             string includeProperties = null,
             int? skip = null,
             int? take = null,
-            bool readOnly = false);
+            bool isReadOnly = false);
 
         Task<IEnumerable<TEntity>> GetAllAsync(
             Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>> orderBy = null,
             string includeProperties = null,
             int? skip = null,
             int? take = null,
-            bool readOnly = false);
+            bool isReadOnly = false);
 
-        IEnumerable<TEntity> Get(
+        IEnumerable<TEntity> GetEntities(
             Expression<Func<TEntity, bool>> filter = null,
             Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>> orderBy = null,
             string includeProperties = null,
             int? skip = null,
             int? take = null,
-            bool readOnly = false);
+            bool isReadOnly = false);
 
         Task<IEnumerable<TEntity>> GetAsync(
             Expression<Func<TEntity, bool>> filter = null,
@@ -37,23 +37,24 @@ namespace COLID.AppDataService.Services.Interface
             string includeProperties = null,
             int? skip = null,
             int? take = null,
-            bool readOnly = false);
+            bool isReadOnly = false);
 
         TEntity GetOne(
             Expression<Func<TEntity, bool>> filter = null,
             string includeProperties = null,
-            bool readOnly = false);
+            bool isReadOnly = false);
 
         Task<TEntity> GetOneAsync(
             Expression<Func<TEntity, bool>> filter = null,
             string includeProperties = null,
-            bool readOnly = false);
+            bool isReadOnly = false);
 
-        bool TryGetOne(
-            out TEntity entity,
-            Expression<Func<TEntity, bool>> filter = null,
-            string includeProperties = null,
-            bool readOnly = false);
+        //COMMENTED beacuse of error CA1021, method seems not being used anywhere.
+        //bool TryGetOne(
+        //    out TEntity entity,
+        //    Expression<Func<TEntity, bool>> filter = null,
+        //    string includeProperties = null,
+        //    bool readOnly = false);
 
         TEntity GetById(object id);
 

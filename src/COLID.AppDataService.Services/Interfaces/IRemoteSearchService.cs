@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using COLID.AppDataService.Common.Search;
 using Newtonsoft.Json.Linq;
 
-namespace COLID.AppDataService.Services.Interface
+namespace COLID.AppDataService.Services.Interfaces
 {
     /// <summary>
     /// Service to handle communication and authentication with the external SearchService.

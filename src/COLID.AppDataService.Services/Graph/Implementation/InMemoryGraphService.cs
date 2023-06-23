@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using COLID.AppDataService.Common.DataModels.TransferObjects;
-using COLID.AppDataService.Services.Graph.Interface;
+using COLID.AppDataService.Services.Graph.Interfaces;
 using Microsoft.Graph;
 
 namespace COLID.AppDataService.Services.Graph.Implementation
@@ -56,7 +56,7 @@ namespace COLID.AppDataService.Services.Graph.Implementation
             return Task.FromResult(users);
         }
 
-        private IList<Group> GetGroups()
+        private static IList<Group> GetGroups()
         {
             return new List<Group>
             {
@@ -68,7 +68,7 @@ namespace COLID.AppDataService.Services.Graph.Implementation
             };
         }
 
-        private Group BuildGroup(string displayName, string mail, bool mailEnabled = true)
+        private static Group BuildGroup(string displayName, string mail, bool mailEnabled = true)
         {
             return new Group()
             {
@@ -80,7 +80,7 @@ namespace COLID.AppDataService.Services.Graph.Implementation
             };
         }
 
-        private IList<User> GetUsers()
+        private static IList<User> GetUsers()
         {
             return new List<User>
             {
@@ -94,7 +94,7 @@ namespace COLID.AppDataService.Services.Graph.Implementation
             };
         }
 
-        private User BuildUser(string givenName, string surname, string mailNickname, string mail = null, bool accountEnabled = true)
+        private static User BuildUser(string givenName, string surname, string mailNickname, string mail = null, bool accountEnabled = true)
         {
             return new User()
             {

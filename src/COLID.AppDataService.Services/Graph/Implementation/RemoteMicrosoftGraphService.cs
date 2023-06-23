@@ -6,7 +6,7 @@ using COLID.AppDataService.Common.Constants;
 using COLID.AppDataService.Common.DataModels.TransferObjects;
 using COLID.AppDataService.Common.Exceptions;
 using COLID.AppDataService.Common.Utilities;
-using COLID.AppDataService.Services.Graph.Interface;
+using COLID.AppDataService.Services.Graph.Interfaces;
 using COLID.Exception.Models.Business;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.Logging;
@@ -152,7 +152,7 @@ namespace COLID.AppDataService.Services.Graph.Implementation
                 }
                 catch (ServiceException e)
                 {
-                    if (!e.Message.Contains("Request_ResourceNotFound"))
+                    if (!e.Message.Contains("Request_ResourceNotFound", StringComparison.Ordinal))
                     {
                         throw e;
                     }
@@ -240,18 +240,18 @@ namespace COLID.AppDataService.Services.Graph.Implementation
 
         #region Handlers
 
-        private System.Exception HandleSearchServiceException(ServiceException serviceException, string query)
+        private static System.Exception HandleSearchServiceException(ServiceException serviceException, string query)
         {
             switch (serviceException.Error.Code)
             {
                 case MicrosoftConstants.Exception.Codes.BadRequest:
                     throw new QueryException($"The given search term '{query}' is invalid.", serviceException.InnerException);
                 default:
-                    throw new System.Exception($"An unknown error has occurred while searching for users.", serviceException.InnerException);
+                    throw new InvalidOperationException($"An unknown error has occurred while searching for users.", serviceException.InnerException);
             }
         }
 
-        private System.Exception HandleServiceException(ServiceException serviceException, string id)
+        private static System.Exception HandleServiceException(ServiceException serviceException, string id)
         {
             switch (serviceException.Error.Code)
             {
@@ -265,7 +265,7 @@ namespace COLID.AppDataService.Services.Graph.Implementation
                     return new QueryException($"The requested resource '{id}' is invalid.");
 
                 default:
-                    return new System.Exception($"An unknown error has occurred while fetching resource with id: {id}.");
+                    return new InvalidOperationException($"An unknown error has occurred while fetching resource with id: {id}.");
             }
         }
 

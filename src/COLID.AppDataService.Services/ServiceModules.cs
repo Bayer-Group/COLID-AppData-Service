@@ -1,8 +1,8 @@
 ﻿using System;
 using COLID.AppDataService.Services.Graph.Implementation;
-using COLID.AppDataService.Services.Graph.Interface;
+using COLID.AppDataService.Services.Graph.Interfaces;
 using COLID.AppDataService.Services.Implementation;
-using COLID.AppDataService.Services.Interface;
+using COLID.AppDataService.Services.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Services.Configuration;
@@ -30,6 +30,7 @@ namespace COLID.AppDataService.Services
             services.AddTransient<IWelcomeMessageService, WelcomeMessageService>();
             services.AddTransient<IActiveDirectoryService, ActiveDirectoryService>();
             services.AddTransient<IRemoteSearchService, RemoteSearchService>();
+            services.AddTransient<IApplicationVersionService, ApplicationVersionService>();
 
             services.Configure<SearchServiceTokenOptions>(configuration.GetSection("SearchServiceTokenOptions"));
 

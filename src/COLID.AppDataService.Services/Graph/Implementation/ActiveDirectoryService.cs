@@ -7,7 +7,7 @@ using AutoMapper;
 using COLID.AppDataService.Common.DataModel;
 using COLID.AppDataService.Common.DataModels.TransferObjects;
 using COLID.AppDataService.Common.Utilities;
-using COLID.AppDataService.Services.Graph.Interface;
+using COLID.AppDataService.Services.Graph.Interfaces;
 using COLID.Cache.Services;
 using COLID.Exception.Models.Business;
 using Microsoft.Extensions.Logging;
@@ -106,7 +106,7 @@ namespace COLID.AppDataService.Services.Graph.Implementation
         public AdSearchResult FindUsersAndGroupsAsync(string query)
         {
             Guard.IsNotEmpty(query);
-
+            
             var userSearchTask = ProcessGetAction(FindUsersAsync, query);
             var groupSearchTask = ProcessGetAction(FindGroupsAsync, query);
 
@@ -148,14 +148,14 @@ namespace COLID.AppDataService.Services.Graph.Implementation
             throw new EntityNotFoundException($"No group or user was found for given id {id}", id);
         }
 
-        public async Task<IEnumerable<AdUserDto>> CheckUsersValidityAsync(ISet<string> adUserEmailSet)
+        public async Task<IEnumerable<AdUserDto>> CheckUsersValidityAsync(ISet<string> emailList)
         {
-            Guard.ContainsValidEmails(adUserEmailSet);
+            Guard.ContainsValidEmails(emailList);
 
             var adUsersToCheck = new HashSet<string>();
             var checkedUsers = new List<AdUserDto>();
 
-            foreach (var userEmail in adUserEmailSet)
+            foreach (var userEmail in emailList)
             {
                 // if invalid ones exists, put them in a separate list (in case that only invalid are asked)
                 if (_cache.Exists(userEmail))
@@ -187,7 +187,7 @@ namespace COLID.AppDataService.Services.Graph.Implementation
             filteredList.ForEach(invalidUser => _cache.Set(invalidUser, now));
         }
 
-        private async Task<IList<T>> ProcessGetAction<T>(Func<string, Task<IList<T>>> action, string query)
+        private static async Task<IList<T>> ProcessGetAction<T>(Func<string, Task<IList<T>>> action, string query)
         {
             IList<T> results;
             try
@@ -202,7 +202,7 @@ namespace COLID.AppDataService.Services.Graph.Implementation
             return results;
         }
 
-        private async Task<T> ProcessGetAction<T>(Func<string, Task<T>> action, string query)
+        private static async Task<T> ProcessGetAction<T>(Func<string, Task<T>> action, string query)
         {
             try
             {
@@ -214,12 +214,12 @@ namespace COLID.AppDataService.Services.Graph.Implementation
             }
         }
 
-        private bool IsActiveGroup(Microsoft.Graph.Group group)
+        private static bool IsActiveGroup(Microsoft.Graph.Group group)
         {
             return group.MailEnabled ?? false;
         }
 
-        private bool IsActiveUser(Microsoft.Graph.User user)
+        private static bool IsActiveUser(Microsoft.Graph.User user)
         {
             return user.AccountEnabled ?? false;
         }

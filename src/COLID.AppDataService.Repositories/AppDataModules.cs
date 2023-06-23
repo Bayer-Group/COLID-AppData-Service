@@ -19,7 +19,7 @@ namespace COLID.AppDataService.Repositories
         public static IServiceCollection AddMySqlDatabaseContext(this IServiceCollection services, IConfiguration configuration)
         {
             // TODO ck: handle "Database not found exception?"
-            Console.WriteLine("- Database: MySql (remote)");
+            //Console.WriteLine("- Database: MySql (remote)");
             var connectionString = BuildConnectionString(configuration);
             services.AddDbContext<AppDataContext>(options =>
             {
@@ -40,8 +40,8 @@ namespace COLID.AppDataService.Repositories
         /// <param name="configuration">The <see cref="IConfiguration" /> object for registration.</param>
         public static IServiceCollection AddSQLiteDatabaseContext(this IServiceCollection services, IConfiguration configuration)
         {
-            Console.WriteLine("- Database: SQLite (local)");
-            var connection = new SqliteConnection("Data Source=:memory:");
+            //Console.WriteLine("- Database: SQLite (local)");
+            using var connection = new SqliteConnection("Data Source=:memory:");
             connection.Open();
             connection.EnableExtensions(true);
             services.AddDbContext<AppDataContext>(options => options.UseSqlite(connection));
@@ -69,7 +69,7 @@ namespace COLID.AppDataService.Repositories
             {
                 var logger = app.ApplicationServices.GetRequiredService<ILogger<DbContext>>();
                 logger.LogError(ex, "An error occured and the DB migration failed");
-                throw ex;
+                throw;
             }
         }
 
@@ -95,7 +95,7 @@ namespace COLID.AppDataService.Repositories
             {
                 var logger = app.ApplicationServices.GetRequiredService<ILogger<DbContext>>();
                 logger.LogError(ex, "An error occured and the DB migration failed");
-                throw ex;
+                throw;
             }
         }
 
@@ -107,8 +107,8 @@ namespace COLID.AppDataService.Repositories
             var dbPassword = configuration.GetValue<string>("Database:Password");
 
             return connectionString
-                .Replace("{DB_USER}", dbUser)
-                .Replace("{DB_PASSWORD}", dbPassword);
+                .Replace("{DB_USER}", dbUser, StringComparison.Ordinal)
+                .Replace("{DB_PASSWORD}", dbPassword, StringComparison.Ordinal);
         }
     }
 }

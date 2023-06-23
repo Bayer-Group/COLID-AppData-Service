@@ -8,7 +8,7 @@ using COLID.AppDataService.Common.DataModel;
 using COLID.AppDataService.Common.Extensions;
 using COLID.AppDataService.Common.Utilities;
 using COLID.AppDataService.Repositories.Context;
-using COLID.AppDataService.Repositories.Interface;
+using COLID.AppDataService.Repositories.Interfaces;
 using COLID.Exception.Models.Business;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,7 +16,7 @@ namespace COLID.AppDataService.Repositories.Implementation
 {
     public class GenericRepository : IGenericRepository
     {
-        protected readonly AppDataContext _context;
+        private readonly AppDataContext _context;
 
         public GenericRepository(AppDataContext context)
         {
@@ -29,7 +29,7 @@ namespace COLID.AppDataService.Repositories.Implementation
             string includeProperties = null,
             int? skip = null,
             int? take = null,
-            bool readOnly = false) where TEntity : class, IEntity
+            bool isReadOnly = false) where TEntity : class, IEntity
         {
             includeProperties ??= string.Empty;
 
@@ -60,7 +60,7 @@ namespace COLID.AppDataService.Repositories.Implementation
                 query = query.Take(take.Value);
             }
 
-            if (readOnly)
+            if (isReadOnly)
                 query = query.AsNoTracking();
 
             return query;
@@ -71,9 +71,9 @@ namespace COLID.AppDataService.Repositories.Implementation
           string includeProperties = null,
           int? skip = null,
           int? take = null,
-          bool readOnly = false) where TEntity : class, IEntity
+          bool IsReadOnly = false) where TEntity : class, IEntity
         {
-            return GetQueryable(null, orderBy, includeProperties, skip, take, readOnly).ToList();
+            return GetQueryable(null, orderBy, includeProperties, skip, take, IsReadOnly).ToList();
         }
 
         public virtual async Task<IEnumerable<TEntity>> GetAllAsync<TEntity>(
@@ -81,20 +81,20 @@ namespace COLID.AppDataService.Repositories.Implementation
             string includeProperties = null,
             int? skip = null,
             int? take = null,
-            bool readOnly = false) where TEntity : class, IEntity
+            bool IsReadOnly = false) where TEntity : class, IEntity
         {
-            return await GetQueryable(null, orderBy, includeProperties, skip, take, readOnly).ToListAsync();
+            return await GetQueryable(null, orderBy, includeProperties, skip, take, IsReadOnly).ToListAsync();
         }
 
-        public virtual IEnumerable<TEntity> Get<TEntity>(
+        public virtual IEnumerable<TEntity> GetEntities<TEntity>(
             Expression<Func<TEntity, bool>> filter = null,
             Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>> orderBy = null,
             string includeProperties = null,
             int? skip = null,
             int? take = null,
-            bool readOnly = false) where TEntity : class, IEntity
+            bool IsReadOnly = false) where TEntity : class, IEntity
         {
-            var entities = GetQueryable(filter, orderBy, includeProperties, skip, take, readOnly).ToList();
+            var entities = GetQueryable(filter, orderBy, includeProperties, skip, take, IsReadOnly).ToList();
             if (entities.IsNullOrEmpty())
             {
                 throw new EntityNotFoundException($"Unable to find {typeof(TEntity).Name}s to the given parameters", string.Empty);
@@ -109,9 +109,9 @@ namespace COLID.AppDataService.Repositories.Implementation
             string includeProperties = null,
             int? skip = null,
             int? take = null,
-            bool readOnly = false) where TEntity : class, IEntity
+            bool IsReadOnly = false) where TEntity : class, IEntity
         {
-            var entities = await GetQueryable(filter, orderBy, includeProperties, skip, take, readOnly).ToListAsync();
+            var entities = await GetQueryable(filter, orderBy, includeProperties, skip, take, IsReadOnly).ToListAsync();
             if (entities.IsNullOrEmpty())
             {
                 throw new EntityNotFoundException($"Unable to find {typeof(TEntity).Name}s to the given parameters", string.Empty);
@@ -123,9 +123,9 @@ namespace COLID.AppDataService.Repositories.Implementation
         public virtual TEntity GetOne<TEntity>(
             Expression<Func<TEntity, bool>> filter = null,
             string includeProperties = "",
-            bool readOnly = false) where TEntity : class, IEntity
+            bool IsReadOnly = false) where TEntity : class, IEntity
         {
-            var entity = GetQueryable(filter, null, includeProperties, null, null, readOnly).SingleOrDefault();
+            var entity = GetQueryable(filter, null, includeProperties, null, null, IsReadOnly).SingleOrDefault();
             if (entity.IsEmpty())
             {
                 throw new EntityNotFoundException($"Unable to find a {typeof(TEntity).Name} to the given parameters", string.Empty);
@@ -137,9 +137,9 @@ namespace COLID.AppDataService.Repositories.Implementation
         public virtual async Task<TEntity> GetOneAsync<TEntity>(
             Expression<Func<TEntity, bool>> filter = null,
             string includeProperties = null,
-            bool readOnly = false) where TEntity : class, IEntity
+            bool IsReadOnly = false) where TEntity : class, IEntity
         {
-            var entity = await GetQueryable(filter, null, includeProperties, null, null, readOnly).SingleOrDefaultAsync();
+            var entity = await GetQueryable(filter, null, includeProperties, null, null, IsReadOnly).SingleOrDefaultAsync();
             if (entity.IsEmpty())
             {
                 throw new EntityNotFoundException($"Unable to find a {typeof(TEntity).Name} to the given parameters", string.Empty);
@@ -152,12 +152,12 @@ namespace COLID.AppDataService.Repositories.Implementation
             out TEntity entity,
             Expression<Func<TEntity, bool>> filter = null,
             string includeProperties = null,
-            bool readOnly = false) where TEntity : class, IEntity
+            bool IsReadOnly = false) where TEntity : class, IEntity
         {
             entity = null;
             try
             {
-                entity = GetOne(filter, includeProperties, readOnly);
+                entity = GetOne(filter, includeProperties, IsReadOnly);
             }
             catch (EntityNotFoundException)
             {

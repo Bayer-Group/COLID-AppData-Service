@@ -4,29 +4,32 @@ using System.Threading.Tasks;
 using COLID.AppDataService.Common.Utilities;
 using Microsoft.AspNetCore.Mvc.Formatters;
 
-public class TextPlainInputFormatter : InputFormatter
+namespace COLID.AppDataService
 {
-    private const string ContentType = MediaTypeNames.Text.Plain;
-
-    public TextPlainInputFormatter()
+    public class TextPlainInputFormatter : InputFormatter
     {
-        SupportedMediaTypes.Add(ContentType);
-    }
+        private const string ContentType = MediaTypeNames.Text.Plain;
 
-    public override async Task<InputFormatterResult> ReadRequestBodyAsync(InputFormatterContext context)
-    {
-        var request = context.HttpContext.Request;
-        using (var reader = new StreamReader(request.Body))
+        public TextPlainInputFormatter()
         {
-            var content = await reader.ReadToEndAsync();
-            return await InputFormatterResult.SuccessAsync(content);
+            SupportedMediaTypes.Add(ContentType);
         }
-    }
 
-    public override bool CanRead(InputFormatterContext context)
-    {
-        Guard.IsNotNull(context.HttpContext.Request.ContentType);
-        var contentType = context.HttpContext.Request.ContentType;
-        return contentType.StartsWith(ContentType);
+        public override async Task<InputFormatterResult> ReadRequestBodyAsync(InputFormatterContext context)
+        {
+            var request = context.HttpContext.Request;
+            using (var reader = new StreamReader(request.Body))
+            {
+                var content = await reader.ReadToEndAsync();
+                return await InputFormatterResult.SuccessAsync(content);
+            }
+        }
+
+        public override bool CanRead(InputFormatterContext context)
+        {
+            Guard.IsNotNull(context.HttpContext.Request.ContentType);
+            var contentType = context.HttpContext.Request.ContentType;
+            return contentType.StartsWith(ContentType);
+        }
     }
 }

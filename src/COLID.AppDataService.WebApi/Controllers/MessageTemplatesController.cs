@@ -3,7 +3,7 @@ using System.Net.Mime;
 using COLID.AppDataService.Common.Constants;
 using COLID.AppDataService.Common.DataModels.TransferObjects;
 using COLID.AppDataService.Common.Enums;
-using COLID.AppDataService.Services.Interface;
+using COLID.AppDataService.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;

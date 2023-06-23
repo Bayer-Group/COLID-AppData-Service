@@ -4,7 +4,7 @@ using System.Net.Mime;
 using System.Threading.Tasks;
 using COLID.AppDataService.Common.Constants;
 using COLID.AppDataService.Common.DataModels.TransferObjects;
-using COLID.AppDataService.Services.Interface;
+using COLID.AppDataService.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -399,7 +399,7 @@ namespace COLID.AppDataService.Controllers
         [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
         [HttpPut("favoritesListEntries/{userId}")]
         [Consumes(MediaTypeNames.Application.Json)]
-        public async Task<IActionResult> AddFavoritesListEntries(Guid userId, [FromBody] List<FavoritesListEntriesDTO> favoritesListEntriesDto)
+        public async Task<IActionResult> AddFavoritesListEntries(Guid userId, [FromBody] IList<FavoritesListEntriesDTO> favoritesListEntriesDto)
         {
             var user = await _userService.AddFavoritesListEntriesAsync(userId, favoritesListEntriesDto);
             return Ok(user);
@@ -583,7 +583,7 @@ namespace COLID.AppDataService.Controllers
         [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
         [HttpPost("removeFavoritesListEntries/{userId}")]
         [Consumes(MediaTypeNames.Application.Json)]
-        public async Task<IActionResult> RemoveFavoritesListEntries(Guid userId, [FromBody] List<int> favoritesListEntriesId)
+        public async Task<IActionResult> RemoveFavoritesListEntries(Guid userId, [FromBody] IList<int> favoritesListEntriesId)
         {
             var user = await _userService.RemoveFavoritesListEntriesAsync(userId, favoritesListEntriesId);
             return Ok(user);

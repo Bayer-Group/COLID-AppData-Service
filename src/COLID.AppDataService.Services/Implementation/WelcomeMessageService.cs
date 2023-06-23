@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using COLID.AppDataService.Common.DataModel;
 using COLID.AppDataService.Common.Enums;
 using COLID.AppDataService.Common.Utilities;
-using COLID.AppDataService.Repositories.Interface;
-using COLID.AppDataService.Services.Interface;
+using COLID.AppDataService.Repositories.Interfaces;
+using COLID.AppDataService.Services.Interfaces;
 using COLID.Cache.Services;
 
 namespace COLID.AppDataService.Services.Implementation
@@ -51,7 +51,7 @@ namespace COLID.AppDataService.Services.Implementation
             Update(welcomeMessage);
             Save();
 
-            _cache.Delete(type.ToString());
+            _cache.Delete(type.ToString(), () => { });
 
             return welcomeMessage;
         }

@@ -17,6 +17,26 @@ namespace Repositories.Migrations
                 .HasAnnotation("ProductVersion", "3.1.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
+            modelBuilder.Entity("COLID.AppDataService.Common.DataModel.ApplicationVersion", b =>
+                {
+                    b.Property<string>("Application")
+                        .HasColumnName("application")
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4");
+
+                    b.Property<DateTime>("ReleaseDate")
+                        .HasColumnName("release_date")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("PipelineId")
+                        .HasColumnName("pipeline_id")
+                        .HasColumnType("longtext CHARACTER SET utf8mb4");
+
+                    b.HasKey("Application", "ReleaseDate")
+                        .HasName("pk_application_versions");
+
+                    b.ToTable("application_versions");
+                });
+
             modelBuilder.Entity("COLID.AppDataService.Common.DataModel.ColidEntrySubscription", b =>
                 {
                     b.Property<int>("Id")

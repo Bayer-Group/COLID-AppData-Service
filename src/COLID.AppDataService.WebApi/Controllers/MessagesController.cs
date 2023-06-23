@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net.Mime;
+using System.Threading.Tasks;
 using COLID.AppDataService.Common.Constants;
 using COLID.AppDataService.Common.DataModels.TransferObjects;
-using COLID.AppDataService.Services.Interface;
+using COLID.AppDataService.Services.Interfaces;
+using Common.DataModels.TransferObjects;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -70,12 +72,20 @@ namespace WebApi.Controllers
             return Ok(message);
         }
 
+        [HttpPost]
+        [Route("notifyUserAboutInvalidContacts")]
+        public async Task<IActionResult> CreateMessagesOfInvalidContacts([FromBody] ColidEntryContactInvalidUsersDto cec)
+        {
+            await _messageService.SendInvalidContactsMessageToUser(cec);
+            return Ok();
+        }
+
         /// <summary>
         /// 
         /// </summary>
         /// <returns></returns>
         [HttpDelete("deleteByAdditionalInfo")]
-        public IActionResult DeleteByAdditionalInfo([FromBody] List<Uri> distributionEndpoints)
+        public IActionResult DeleteByAdditionalInfo([FromBody] IList<Uri> distributionEndpoints)
         {
             _messageService.DeleteByAdditionalInfo(distributionEndpoints);
             return Ok();
@@ -87,7 +97,7 @@ namespace WebApi.Controllers
         /// <param name="distributionEndpoints"></param>
         /// <returns></returns>
         [HttpPost("getByAdditionalInfo")]
-        public IActionResult GetByAdditionalInfo([FromBody] List<Uri> distributionEndpoints)
+        public IActionResult GetByAdditionalInfo([FromBody] IList<Uri> distributionEndpoints)
         {
             var result = _messageService.GetByAdditionalInfo(distributionEndpoints);
             return Ok(result);

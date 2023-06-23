@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using COLID.AppDataService.Common.Utilities;
 using COLID.AppDataService.Services.Graph.Implementation;
-using COLID.AppDataService.Services.Graph.Interface;
+using COLID.AppDataService.Services.Graph.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Graph;

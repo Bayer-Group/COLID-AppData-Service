@@ -11,9 +11,9 @@ using COLID.AppDataService.Common.Enums;
 using COLID.AppDataService.Common.Exceptions;
 using COLID.AppDataService.Common.Extensions;
 using COLID.AppDataService.Common.Utilities;
-using COLID.AppDataService.Repositories.Interface;
+using COLID.AppDataService.Repositories.Interfaces;
 using COLID.Graph.HashGenerator;
-using COLID.AppDataService.Services.Interface;
+using COLID.AppDataService.Services.Interfaces;
 using COLID.Exception.Models.Business;
 using COLID.AppDataService.Common.Search;
 using Microsoft.Extensions.Logging;
@@ -130,7 +130,7 @@ namespace COLID.AppDataService.Services.Implementation
         {
             Guard.IsValidEmail(emailAddress);
 
-            var user = await GetOneAsync(u => u.EmailAddress.Equals(emailAddress));
+            var user = await GetOneAsync(u => u.EmailAddress.Equals(emailAddress, StringComparison.Ordinal));
 
             if (user.Id == Guid.Empty)
             {
@@ -167,15 +167,15 @@ namespace COLID.AppDataService.Services.Implementation
             return cg.DefaultConsumerGroup;
         }
 
-        public async Task<User> UpdateDefaultConsumerGroupAsync(Guid userId, ConsumerGroupDto consumerGroupDto)
+        public async Task<User> UpdateDefaultConsumerGroupAsync(Guid userId, ConsumerGroupDto consumerGroup)
         {
             Guard.IsNotNull(userId);
-            Guard.IsValidUri(consumerGroupDto.Uri);
+            Guard.IsValidUri(consumerGroup.Uri);
 
-            var consumerGroup = _consumerGroupService.GetOne(consumerGroupDto.Uri);
+            var curConsGroup = _consumerGroupService.GetOne(consumerGroup.Uri);
             var user = await GetOneAsync(u => u.Id.Equals(userId), nameof(User.DefaultConsumerGroup));
 
-            user.DefaultConsumerGroup = consumerGroup;
+            user.DefaultConsumerGroup = curConsGroup;
             Update(user);
             await SaveAsync();
 
@@ -353,14 +353,14 @@ namespace COLID.AppDataService.Services.Implementation
             return searchFilterDataMarketplace;
         }
 
-        public async Task<User> AddSearchFilterDataMarketplaceAsync(Guid userId, SearchFilterDataMarketplaceDto searchFilterDto)
+        public async Task<User> AddSearchFilterDataMarketplaceAsync(Guid userId, SearchFilterDataMarketplaceDto searchFilter)
         {
-            Guard.IsNotNull(userId, searchFilterDto);
+            Guard.IsNotNull(userId, searchFilter);
             var user = await GetOneAsync(u => u.Id.Equals(userId), nameof(User.SearchFiltersDataMarketplace));
-            var searchFilter = _mapper.Map<SearchFilterDataMarketplace>(searchFilterDto);
-            searchFilter.User = user;
+            var curSearchFilter = _mapper.Map<SearchFilterDataMarketplace>(searchFilter);
+            curSearchFilter.User = user;
             user.SearchFiltersDataMarketplace ??= new Collection<SearchFilterDataMarketplace>();
-            user.SearchFiltersDataMarketplace.Add(searchFilter);
+            user.SearchFiltersDataMarketplace.Add(curSearchFilter);
             // TODO CK: test this
             Update(user);
             await SaveAsync();
@@ -368,19 +368,19 @@ namespace COLID.AppDataService.Services.Implementation
             return user;
         }
 
-        public async Task<User> RemoveSearchFilterDataMarketplaceAsync(Guid userId, int id)
+        public async Task<User> RemoveSearchFilterDataMarketplaceAsync(Guid userId, int searchFilterId)
         {
-            Guard.IsNotNull(userId, id);
+            Guard.IsNotNull(userId, searchFilterId);
 
             // direct access to repo here, because this is the only possible function for a service yet.
-            var searchFilter = _repo.GetOne<SearchFilterDataMarketplace>(sf => sf.Id.Equals(id),nameof(SearchFilterDataMarketplace.StoredQuery));
+            var searchFilter = _repo.GetOne<SearchFilterDataMarketplace>(sf => sf.Id.Equals(searchFilterId),nameof(SearchFilterDataMarketplace.StoredQuery));
             if (searchFilter.IsEmpty())
             {
-                throw new EntityNotFoundException($"The given search filter {id} for the user {userId} does not exist!");
+                throw new EntityNotFoundException($"The given search filter {searchFilterId} for the user {userId} does not exist!");
             }
             if (!searchFilter.StoredQuery.IsEmpty())
             {
-                await RemoveStoredQueryFromSearchFiltersDataMarketplaceAync(userId, id);
+                await RemoveStoredQueryFromSearchFiltersDataMarketplaceAync(userId, searchFilterId);
             }
 
             _repo.Delete(searchFilter);
@@ -645,12 +645,12 @@ namespace COLID.AppDataService.Services.Implementation
             return user;
         }
 
-        public User AddMessage(Guid userId, MessageDto messageDto)
+        public User AddMessage(Guid userId, MessageDto message)
         {
             var user = GetOne(u => u.Id.Equals(userId), nameof(User.Messages));
-            var message = _mapper.Map<Message>(messageDto);
+            var msg = _mapper.Map<Message>(message);
             user.Messages ??= new List<Message>();
-            user.Messages.Add(message);
+            user.Messages.Add(msg);
             Update(user);
             Save();
 
@@ -776,7 +776,7 @@ namespace COLID.AppDataService.Services.Implementation
             return _mapper.Map<MessageDto>(userMessage);
         }
 
-        private Message GetMessageByUserAndId(User user, int messageId)
+        private static Message GetMessageByUserAndId(User user, int messageId)
         {
             Guard.IsPositiveInteger(messageId);
             var userMessage = user.Messages?.FirstOrDefault(msg => msg.Id.Equals(messageId));
@@ -812,7 +812,7 @@ namespace COLID.AppDataService.Services.Implementation
                     bool initalSearch = searchfilter.StoredQuery.SearchResultHash == null;
                     if (initalSearch || computedHash != searchfilter.StoredQuery.SearchResultHash)
                     {
-                        List<string> newPids = GetUpdatedResources(searchResult.Hits.Hits, searchfilter.StoredQuery);
+                        List<string> newPids = GetUpdatedResources(searchResult.Hits.Hits, searchfilter.StoredQuery).ToList();
                         try
                         {
                             searchfilter.StoredQuery.SearchResultHash = computedHash;
@@ -852,7 +852,7 @@ namespace COLID.AppDataService.Services.Implementation
             return computedHash;
         }
 
-        public async Task NotifyUserAboutUpdates(SearchFilterDataMarketplace sf, List<string> newPids)
+        public async Task NotifyUserAboutUpdates(SearchFilterDataMarketplace sf, IList<string> newPids)
         {
             Guard.IsNotNull(sf, newPids);
             string subject = " ";
@@ -866,8 +866,8 @@ namespace COLID.AppDataService.Services.Implementation
             }
 
             var messageTemplate = _messageTemplateService.GetOne(MessageType.StoredQueryResult);
-            subject = messageTemplate.Subject.Replace("%SEARCH_NAME%", $"\"{sf.Name}\"");
-            body = messageTemplate.Body.Replace("%UPDATED_RESOURCES%", "<br>"+ string.Join("<br>", newPids.Select(x => "<a href=" + x + " </a>" + x)));
+            subject = messageTemplate.Subject.Replace("%SEARCH_NAME%", $"\"{sf.Name}\"", StringComparison.Ordinal);
+            body = messageTemplate.Body.Replace("%UPDATED_RESOURCES%", "<br>"+ string.Join("<br>", newPids.Select(x => "<a href=" + x + " </a>" + x)), StringComparison.Ordinal);
 
             var messageDto = new MessageDto { Subject = subject, Body = body, SendOn = sendOn, DeleteOn = deleteOn };
             AddMessage(sf.User.Id, messageDto);
@@ -876,8 +876,8 @@ namespace COLID.AppDataService.Services.Implementation
         public async Task<SearchResultDTO> GetElasticSearchResult(SearchFilterDataMarketplace searchfilter)
         {
             Guard.IsNotNull(searchfilter);
-            var aggregationFilters = searchfilter.FilterJson != null ? searchfilter.FilterJson.GetValue("aggregations").ToObject<Dictionary<string, List<string>>>() : new Dictionary<string, List<string>>();
-            var rangeFilters = searchfilter.FilterJson != null ? searchfilter.FilterJson.GetValue("ranges").ToObject<Dictionary<string, Dictionary<string, string>>>() : new Dictionary<string, Dictionary<string, string>>();
+            var aggregationFilters = searchfilter.FilterJson != null ? searchfilter.FilterJson.GetValue("aggregations", StringComparison.Ordinal).ToObject<Dictionary<string, List<string>>>() : new Dictionary<string, List<string>>();
+            var rangeFilters = searchfilter.FilterJson != null ? searchfilter.FilterJson.GetValue("ranges", StringComparison.Ordinal).ToObject<Dictionary<string, Dictionary<string, string>>>() : new Dictionary<string, Dictionary<string, string>>();
             var searchRequest = new SearchRequestDto()
             {
                 From = 0,
@@ -893,7 +893,7 @@ namespace COLID.AppDataService.Services.Implementation
             return searchResult;
         }
 
-        public List<string> GetUpdatedResources(List<SearchHit> hits, StoredQuery storedQuery)
+        public IList<string> GetUpdatedResources(IList<SearchHit> hits, StoredQuery storedQuery)
         {
             Guard.IsNotNull(hits, storedQuery);
             var storedQueryLatestExecutionDate = storedQuery.LatestExecutionDate != null ? storedQuery.LatestExecutionDate : storedQuery.CreatedAt;
@@ -1000,7 +1000,7 @@ namespace COLID.AppDataService.Services.Implementation
             return user;
         }
 
-        public async Task<List<FavoritesList>> AddFavoritesListEntriesAsync(Guid userId, List<FavoritesListEntriesDTO> favoritesListEntriesDto)
+        public async Task<List<FavoritesList>> AddFavoritesListEntriesAsync(Guid userId, IList<FavoritesListEntriesDTO> favoritesListEntriesDto)
         {
             var favoriteListEntriesResponse = new List<FavoritesList>();
 
@@ -1121,8 +1121,8 @@ namespace COLID.AppDataService.Services.Implementation
                             PIDUriData.Add(new JProperty("EntryId", favoritesList.FavoritesListEntries.Where(fle => fle.PIDUri == pidUri).Select(fle => fle.Id)));
                             PIDUriData.Add(new JProperty("PersonalNote", favoritesList.FavoritesListEntries.Where(fle => fle.PIDUri == pidUri).Select(fle => fle.PersonalNote)));
 
+                            resourceContents.Add(pidUri, PIDUriData);
                         }
-                        resourceContents.Add(pidUri, PIDUriData);
                     }
                     return resourceContents;
                 }
@@ -1147,7 +1147,7 @@ namespace COLID.AppDataService.Services.Implementation
             {
                 throw new EntityNotFoundException($"The given user has no favorites lists", string.Empty);
             }
-            var favoritesListEntries = user.FavoritesLists.SelectMany(fl => fl.FavoritesListEntries).Where(fl=>fl.PIDUri.Equals(HttpUtility.UrlDecode(pidUri))).ToList();
+            var favoritesListEntries = user.FavoritesLists.SelectMany(fl => fl.FavoritesListEntries).Where(fl=>fl.PIDUri.Equals(HttpUtility.UrlDecode(pidUri), StringComparison.Ordinal)).ToList();
             var favoritesListIDs = favoritesListEntries.Select(fle => fle.FavoritesLists.Id).Distinct().ToList();
 
             return favoritesListIDs;
@@ -1235,7 +1235,7 @@ namespace COLID.AppDataService.Services.Implementation
             return user.FavoritesLists.ToList();
         }
 
-        public async Task<List<FavoritesList>> RemoveFavoritesListEntriesAsync(Guid userId, List<int> favoritesListEntriesId)
+        public async Task<List<FavoritesList>> RemoveFavoritesListEntriesAsync(Guid userId, IList<int> favoritesListEntriesId)
         {
             var favoriteListEntriesResponse = new List<FavoritesList>();
 
