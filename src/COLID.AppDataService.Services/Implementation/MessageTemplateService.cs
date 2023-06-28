@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using AutoMapper;
 using COLID.AppDataService.Common.DataModel;

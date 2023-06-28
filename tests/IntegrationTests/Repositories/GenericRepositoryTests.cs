@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using COLID.AppDataService.Repositories.Context;
 using COLID.AppDataService.Repositories.Implementation;
-using COLID.AppDataService.Repositories.Interface;
+using COLID.AppDataService.Repositories.Interfaces;
 using COLID.AppDataService.Tests.Unit;
 using COLID.Exception.Models.Business;
 using Xunit;
@@ -48,7 +48,7 @@ namespace COLID.AppDataService.Tests.Integration.Repositories
         [Fact]
         public void Get_Should_Return_Entity()
         {
-            var result = _repo.Get<User>();
+            var result = _repo.GetEntities<User>();
             Assert.NotNull(result);
         }
 

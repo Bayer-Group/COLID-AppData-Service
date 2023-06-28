@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 using AutoMapper;
 using COLID.AppDataService.Common.DataModel;
 using COLID.AppDataService.Common.Enums;
-using COLID.AppDataService.Repositories.Interface;
+using COLID.AppDataService.Repositories.Interfaces;
 using COLID.AppDataService.Services.Implementation;
-using COLID.AppDataService.Services.Interface;
+using COLID.AppDataService.Services.Interfaces;
 using COLID.AppDataService.Common.Search;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -115,7 +115,7 @@ namespace UnitTests.Services
             SearchHit2.Source.Add("https://pid.bayer.com/kos/19050/dateCreated", JObject.Parse("{ \"outbound\": [ { \"value\": \"2021-02-08T09:06:30.452Z\", \"uri\": null, \"edge\": null } ], \"inbound\": [] }"));
             searchList.Add(SearchHit);
             searchList.Add(SearchHit2);
-            List<string> resultPidUris = _service.GetUpdatedResources(searchList, storedQuery);
+            List<string> resultPidUris = _service.GetUpdatedResources(searchList, storedQuery).ToList();
             var resultResourcePid = resultPidUris.ToArray()[0];
 
             Assert.NotNull(resultPidUris);
@@ -141,7 +141,7 @@ namespace UnitTests.Services
             SearchHit2.Source.Add("https://pid.bayer.com/kos/19050/dateCreated", JObject.Parse("{ \"outbound\": [ { \"value\": \"2021-02-03T09:06:30.452Z\", \"uri\": null, \"edge\": null } ], \"inbound\": [] }"));
             searchList.Add(SearchHit);
             searchList.Add(SearchHit2);
-            List<string> resultPidUris = _service.GetUpdatedResources(searchList, storedQuery);
+            List<string> resultPidUris = _service.GetUpdatedResources(searchList, storedQuery).ToList();
             
             Assert.NotNull(resultPidUris);
             Assert.Empty(resultPidUris);

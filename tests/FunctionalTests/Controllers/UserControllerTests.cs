@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -14,6 +15,7 @@ using COLID.AppDataService.Common.Enums;
 using COLID.AppDataService.Tests.Integration;
 using COLID.AppDataService.Tests.Unit;
 using COLID.AppDataService.Tests.Unit.Builder;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Xunit;
 using Xunit.Abstractions;
@@ -32,7 +34,13 @@ namespace COLID.AppDataService.Tests.Functional.Controllers
         private readonly Random _rnd;
         private readonly ApiTestHelper _api;
         private readonly ITestOutputHelper _output;
-
+        private static readonly string _basePath = Path.GetFullPath("appsettings.json");
+        private static readonly string _filePath = _basePath.Substring(0, _basePath.Length - 16);
+        private static IConfigurationRoot configuration = new ConfigurationBuilder()
+                     .SetBasePath(_filePath)
+                    .AddJsonFile("appsettings.json")
+                    .Build();
+        private static readonly string _serviceUrl = configuration.GetValue<string>("ServiceUrl");
         public UserControllerTests(FunctionTestsFixture factory, ITestOutputHelper output)
         {
             Client = factory.CreateClient();
@@ -266,7 +274,7 @@ namespace COLID.AppDataService.Tests.Functional.Controllers
         public async Task UpdateDefaultConsumerGroup_Put_Returns_BadRequest_IfConsumerGroupDoesNotExist()
         {
             var user = _seeder.Add(TestData.GenerateRandomUser());
-            var invalidCGUri = $"https://pid.bayer.com/kos/19050#{Guid.NewGuid()}";
+            var invalidCGUri = _serviceUrl + $"kos/19050#{Guid.NewGuid()}";
 
             var response = await Client.PutAsync($"{PATH}/{user.Id}/defaultConsumerGroup", BuildJsonHttpContent(invalidCGUri));
             var stringResponse = await response.Content.ReadAsStringAsync();

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using COLID.AppDataService.Common.DataModel;
@@ -88,12 +88,9 @@ namespace COLID.AppDataService.Repositories.Context
             modelBuilder.ApplyConfiguration(new FavoritesListConfiguration());
 
             // User configuration for cascade deletion
-            modelBuilder.ApplyConfiguration(new UserConfiguration());
-
-
-
-            //Foreign key config for Application Version
-
+            modelBuilder.ApplyConfiguration(new UserConfiguration());
+
+            //Foreign key config for Application Version
             modelBuilder.ApplyConfiguration(new ApplicationVersionConfiguration());
 
             // Enable snake_case for tables, columns, keys, constraints and indexes

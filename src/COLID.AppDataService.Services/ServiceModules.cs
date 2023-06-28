@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using COLID.AppDataService.Services.Graph.Implementation;
 using COLID.AppDataService.Services.Graph.Interfaces;
 using COLID.AppDataService.Services.Implementation;
