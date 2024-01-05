@@ -25,6 +25,9 @@ using System.Web;
 using Common.DataModels.TransferObjects;
 using System.IO;
 using Microsoft.Extensions.Configuration;
+using System.Net.Http;
+using COLID.AppDataService.Services.Graph.Interfaces;
+using COLID.Common.Extensions;
 
 namespace COLID.AppDataService.Services.Implementation
 {
@@ -34,6 +37,8 @@ namespace COLID.AppDataService.Services.Implementation
         private readonly IColidEntrySubscriptionService _colidEntrySubscriptionService;
         private readonly IRemoteSearchService _remoteSearchService;
         private readonly IMessageTemplateService _messageTemplateService;
+        private readonly IRemoteRegistrationService _remoteRegistrationService;
+        private readonly IActiveDirectoryService _activeDirectoryService;
 
         private readonly IMapper _mapper;
         private readonly ILogger<UserService> _logger;
@@ -60,8 +65,10 @@ namespace COLID.AppDataService.Services.Implementation
         public UserService(IGenericRepository repo,
             IConsumerGroupService consumerGroupService,
             IRemoteSearchService remoteSearchService,
+            IRemoteRegistrationService remoteRegistrationService,
             IColidEntrySubscriptionService colidEntrySubscriptionService,
             IMessageTemplateService messageTemplateService,
+            IActiveDirectoryService activeDirectoryService,
             IMapper mapper, ILogger<UserService> logger) : base(repo)
         {
             _consumerGroupService = consumerGroupService;
@@ -70,6 +77,8 @@ namespace COLID.AppDataService.Services.Implementation
             _mapper = mapper;
             _logger = logger;
             _remoteSearchService = remoteSearchService;
+            _remoteRegistrationService = remoteRegistrationService;
+            _activeDirectoryService = activeDirectoryService;
         }
 
         public User GetOne(Guid userId)
@@ -79,12 +88,22 @@ namespace COLID.AppDataService.Services.Implementation
 
         public async Task<User> GetOneAsync(Guid userId)
         {
-            return await GetOneAsync(u => u.Id.Equals(userId), string.Join(',', _includeProperties));
+            var user = await GetOneAsync(u => u.Id.Equals(userId), string.Join(',', _includeProperties));
+
+            if (user.Department == null)
+            {
+                var adUser = await _activeDirectoryService.GetUserAsync(userId.ToString());
+                user.Department = adUser.Department;
+                Update(user);
+                await SaveAsync();
+            }
+
+            return user;
         }
 
-        public User Create(UserDto userDto)
+        public async Task<User> Create(UserDto userDto)
         {
-            var userEntity = CheckAndPrepareUserEntityForCreate(userDto);
+            var userEntity = await CheckAndPrepareUserEntityForCreate(userDto);
             Create(userEntity);
             Save();
             return userEntity;
@@ -98,7 +117,7 @@ namespace COLID.AppDataService.Services.Implementation
 
         public async Task<User> CreateAsync(UserDto userDto)
         {
-            var userEntity = CheckAndPrepareUserEntityForCreate(userDto);
+            var userEntity = await CheckAndPrepareUserEntityForCreate(userDto);
 
             Create(userEntity);
             await SaveAsync();
@@ -106,7 +125,7 @@ namespace COLID.AppDataService.Services.Implementation
             return userEntity;
         }
 
-        private User CheckAndPrepareUserEntityForCreate(UserDto userDto)
+        private async Task<User> CheckAndPrepareUserEntityForCreate(UserDto userDto)
         {
             Guard.IsNotNull(userDto);
             Guard.IsValidEmail(userDto.EmailAddress);
@@ -122,6 +141,12 @@ namespace COLID.AppDataService.Services.Implementation
                 SendInterval = Common.Enums.SendInterval.Weekly,
                 DeleteInterval = Common.Enums.DeleteInterval.Monthly
             };
+
+            if (userEntity.Department == null)
+            {
+                var adUser = await _activeDirectoryService.GetUserAsync(userDto.Id.ToString());
+                userEntity.Department = adUser.Department;
+            }
 
             return userEntity;
         }
@@ -353,15 +378,29 @@ namespace COLID.AppDataService.Services.Implementation
             return searchFilterDataMarketplace;
         }
 
-        public async Task<User> AddSearchFilterDataMarketplaceAsync(Guid userId, SearchFilterDataMarketplaceDto searchFilter)
+        public async Task<User> AddSearchFilterDataMarketplaceAsync(Guid userId, SearchFilterDataMarketplaceDto searchFilterDataMarketplaceDto)
         {
-            Guard.IsNotNull(userId, searchFilter);
+            Guard.IsNotNull(userId, searchFilterDataMarketplaceDto);
+
+            Nullable<int> savedSearchId = searchFilterDataMarketplaceDto.Id;
+
+            // register PidUri for the given saved search
+            searchFilterDataMarketplaceDto = await _remoteRegistrationService.RegisterSavedSearches(searchFilterDataMarketplaceDto);
+ 
             var user = await GetOneAsync(u => u.Id.Equals(userId), nameof(User.SearchFiltersDataMarketplace));
-            var curSearchFilter = _mapper.Map<SearchFilterDataMarketplace>(searchFilter);
+            var curSearchFilter = _mapper.Map<SearchFilterDataMarketplace>(searchFilterDataMarketplaceDto);
             curSearchFilter.User = user;
             user.SearchFiltersDataMarketplace ??= new Collection<SearchFilterDataMarketplace>();
-            user.SearchFiltersDataMarketplace.Add(curSearchFilter);
-            // TODO CK: test this
+            if (savedSearchId.HasValue)
+            {
+                var tempSavedSearch = user.SearchFiltersDataMarketplace.First(search => search.Id.Equals(savedSearchId));
+                tempSavedSearch.PidUri = searchFilterDataMarketplaceDto.PidUri;
+            }
+            else
+            {
+                user.SearchFiltersDataMarketplace.Add(curSearchFilter);
+            }
+
             Update(user);
             await SaveAsync();
 
@@ -374,6 +413,7 @@ namespace COLID.AppDataService.Services.Implementation
 
             // direct access to repo here, because this is the only possible function for a service yet.
             var searchFilter = _repo.GetOne<SearchFilterDataMarketplace>(sf => sf.Id.Equals(searchFilterId),nameof(SearchFilterDataMarketplace.StoredQuery));
+            var removePidUriNginx = searchFilter.PidUri;
             if (searchFilter.IsEmpty())
             {
                 throw new EntityNotFoundException($"The given search filter {searchFilterId} for the user {userId} does not exist!");
@@ -386,9 +426,27 @@ namespace COLID.AppDataService.Services.Implementation
             _repo.Delete(searchFilter);
             await _repo.SaveAsync();
 
+            if (removePidUriNginx!=null)
+            {
+                await _remoteRegistrationService.RemovePidUriFromConfig(removePidUriNginx);
+            }
+
             var user = await GetOneAsync(u => u.Id.Equals(userId), nameof(User.SearchFiltersDataMarketplace));
 
             return user;
+        }
+
+        public async Task<ICollection<SearchFilterDataMarketplace>> GetAllSearchFiltersDataMarketplaceAsync()
+        {
+            var users = await GetAllAsync(includeProperties: nameof(User.SearchFiltersDataMarketplace) + "," + nameof(User.SearchFiltersDataMarketplace) + ".StoredQuery");
+            var searchFilterDataMarketplace = users.SelectMany(x => x.SearchFiltersDataMarketplace);
+
+            if (searchFilterDataMarketplace == null || !searchFilterDataMarketplace.Any())
+            {
+                throw new EntityNotFoundException($"No Data Marketplace search filter found");
+            }
+
+            return searchFilterDataMarketplace.ToList();
         }
 
         #endregion [SearchFilter Data Marketplace]
@@ -515,6 +573,65 @@ namespace COLID.AppDataService.Services.Implementation
             var resultDto = _mapper.Map<ICollection<ColidEntrySubscriptionDto>>(user.ColidEntrySubscriptions);
 
             return resultDto;
+        }
+
+        public async Task<IEnumerable<ColidEntrySubscriptionDetailsDto>> GetLatestColidEntrySubscriptionsOfUserAsync(Guid userId)
+        {
+            var user = await GetOneAsync(u => u.Id.Equals(userId), nameof(User.ColidEntrySubscriptions));
+            var latestSubs = user.ColidEntrySubscriptions.OrderByDescending(sub => sub.CreatedAt).Take(20).ToList();
+            if (latestSubs.Count > 0)
+            {
+                var resourceDetailsFromElastic = await _remoteSearchService.GetDocumentsByIds(latestSubs.Select(x => x.ColidPidUri.ToString()));
+                var subsWithDetails = latestSubs.Select(sub =>
+                {
+                    string encodedPidUri = HttpUtility.UrlEncode(sub.ColidPidUri.ToString());
+                    JObject props = resourceDetailsFromElastic[encodedPidUri].First();
+                    return new ColidEntrySubscriptionDetailsDto(sub.ColidPidUri, GetResourcePropertyByKey(props, $"{_serviceUrl}kos/19050/hasLabel"), GetResourcePropertyByKey(props, $"{_serviceUrl}kos/19050/hasResourceDefinition"), GetResourcePropertyByKey(props, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"));
+                }).Where(sub => !sub.ResourceLabel.IsNullOrEmpty()).Take(10).ToList();
+                return subsWithDetails;
+            } 
+            else
+            {
+                return Enumerable.Empty<ColidEntrySubscriptionDetailsDto>();
+            }
+            
+        }
+
+        public async Task<IEnumerable<ColidEntrySubscriptionDetailsDto>> GetMostSubscribedColidEntrySubscriptions(int take = 5)
+        {
+            var mostSubscribedResourcePidUris = _colidEntrySubscriptionService.GetMostSubscribedResources(take).ToList();
+            if (mostSubscribedResourcePidUris.Count > 0)
+            {
+                var resourceDetailsFromElastic = await _remoteSearchService.GetDocumentsByIds(mostSubscribedResourcePidUris.Select(x => x.ResourcePidUri.ToString()));
+                var subsWithDetails = mostSubscribedResourcePidUris.Select(sub =>
+                {
+                    string encodedPidUri = HttpUtility.UrlEncode(sub.ResourcePidUri.ToString());
+                    JObject props = resourceDetailsFromElastic[encodedPidUri].First();
+                    return new ColidEntrySubscriptionDetailsDto(sub.ResourcePidUri, GetResourcePropertyByKey(props, $"{_serviceUrl}kos/19050/hasLabel"), GetResourcePropertyByKey(props, $"{_serviceUrl}kos/19050/hasResourceDefinition"), GetResourcePropertyByKey(props, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"));
+                }).ToList();
+                return subsWithDetails;
+            } 
+            else
+            {
+                return Enumerable.Empty<ColidEntrySubscriptionDetailsDto>();
+            }
+        }
+
+        private static string GetResourcePropertyByKey(JObject props, string propertyUri)
+        {
+            if (props != null && props.ContainsKey(propertyUri))
+            {
+                if (propertyUri.Equals("http://www.w3.org/1999/02/22-rdf-syntax-ns#type", StringComparison.Ordinal)) {
+                    return props[propertyUri]
+                    .ToObject<DocumentMapDirection>().outbound
+                    .FirstOrDefault().uri;
+                }
+                return props[propertyUri]
+                    .ToObject<DocumentMapDirection>().outbound
+                    .FirstOrDefault().value;
+            }
+
+            return "";
         }
 
         public async Task<User> RemoveColidEntrySubscriptionAsync(Guid userId, ColidEntrySubscriptionDto colidEntrySubscriptionDto)
@@ -812,7 +929,7 @@ namespace COLID.AppDataService.Services.Implementation
                     bool initalSearch = searchfilter.StoredQuery.SearchResultHash == null;
                     if (initalSearch || computedHash != searchfilter.StoredQuery.SearchResultHash)
                     {
-                        List<string> newPids = GetUpdatedResources(searchResult.Hits.Hits, searchfilter.StoredQuery).ToList();
+                        List<UpdatedResourceStoredQueryDto> updatedResources = GetUpdatedResources(searchResult.Hits.Hits, searchfilter.StoredQuery).ToList();
                         try
                         {
                             searchfilter.StoredQuery.SearchResultHash = computedHash;
@@ -825,9 +942,9 @@ namespace COLID.AppDataService.Services.Implementation
                         {
                             throw new EntityNotChangedException("Couldn't update the stored query of the user");
                         }
-                        if (newPids.Count > 0)
+                        if (updatedResources.Count > 0)
                         {
-                            await NotifyUserAboutUpdates(searchfilter, newPids);
+                            await NotifyUserAboutUpdates(searchfilter, updatedResources);
                         }
                     } 
                 }
@@ -852,9 +969,9 @@ namespace COLID.AppDataService.Services.Implementation
             return computedHash;
         }
 
-        public async Task NotifyUserAboutUpdates(SearchFilterDataMarketplace sf, IList<string> newPids)
+        public async Task NotifyUserAboutUpdates(SearchFilterDataMarketplace sf, IList<UpdatedResourceStoredQueryDto> updatedResources)
         {
-            Guard.IsNotNull(sf, newPids);
+            Guard.IsNotNull(sf, updatedResources);
             string subject = " ";
             string body = " ";
             var messageConfig = await this.GetMessageConfigAsync(sf.User.Id);
@@ -867,7 +984,7 @@ namespace COLID.AppDataService.Services.Implementation
 
             var messageTemplate = _messageTemplateService.GetOne(MessageType.StoredQueryResult);
             subject = messageTemplate.Subject.Replace("%SEARCH_NAME%", $"\"{sf.Name}\"", StringComparison.Ordinal);
-            body = messageTemplate.Body.Replace("%UPDATED_RESOURCES%", "<br>"+ string.Join("<br>", newPids.Select(x => "<a href=" + x + " </a>" + x)), StringComparison.Ordinal);
+            body = messageTemplate.Body.Replace("%UPDATED_RESOURCES%", "<br>"+ string.Join("<br>", updatedResources.Select(x => $"<a href=\"{x.PidUri}\">{x.ResourceLabel}</a>")), StringComparison.Ordinal);
 
             var messageDto = new MessageDto { Subject = subject, Body = body, SendOn = sendOn, DeleteOn = deleteOn };
             AddMessage(sf.User.Id, messageDto);
@@ -893,11 +1010,11 @@ namespace COLID.AppDataService.Services.Implementation
             return searchResult;
         }
 
-        public IList<string> GetUpdatedResources(IList<SearchHit> hits, StoredQuery storedQuery)
+        public IList<UpdatedResourceStoredQueryDto> GetUpdatedResources(IList<SearchHit> hits, StoredQuery storedQuery)
         {
             Guard.IsNotNull(hits, storedQuery);
             var storedQueryLatestExecutionDate = storedQuery.LatestExecutionDate != null ? storedQuery.LatestExecutionDate : storedQuery.CreatedAt;
-            var newPids = new List<string>();
+            var updatedResources = new List<UpdatedResourceStoredQueryDto>();
             foreach(SearchHit hit in hits)
             { 
                 var lastChangeString = JObject.Parse(hit.Source.GetValueOrDefault(_serviceUrl + "kos/19050/lastChangeDateTime").ToString()).ToObject<DocumentMapDirection>().outbound.FirstOrDefault().value;
@@ -908,11 +1025,12 @@ namespace COLID.AppDataService.Services.Implementation
                 if(dateCreatedDate > storedQueryLatestExecutionDate || lastChangeDate > storedQueryLatestExecutionDate)
                 {
                     var pidUri = JObject.Parse(hit.Source.GetValueOrDefault(_httpServiceUrl + "kos/19014/hasPID").ToString()).ToObject<DocumentMapDirection>().outbound.FirstOrDefault().value;
-                    newPids.Add(pidUri);
+                    var resourceLabel = JObject.Parse(hit.Source.GetValueOrDefault($"{_serviceUrl}kos/19050/hasLabel").ToString()).ToObject<DocumentMapDirection>().outbound.FirstOrDefault().value;
+                    updatedResources.Add(new UpdatedResourceStoredQueryDto(pidUri, resourceLabel));
                 }
             }
 
-            return newPids;
+            return updatedResources;
         } 
 
         public bool StoredQueryNeedsToBeEvaluated(StoredQuery storedQuery)
@@ -1107,7 +1225,7 @@ namespace COLID.AppDataService.Services.Implementation
             var favoritesListPIDUris = favoritesList.FavoritesListEntries.Select(fle => fle.PIDUri).Distinct().ToList();
             try
             {
-                var elasticPIDURIsresponse = await _remoteSearchService.GetDocumentsByIds(favoritesListPIDUris);
+                var elasticPIDURIsresponse = await _remoteSearchService.GetDocumentsByIds(favoritesListPIDUris, true);
                 if (elasticPIDURIsresponse.Count > 0)
                 {
                     IDictionary<string, JObject> resourceContents = new Dictionary<string, JObject>();
@@ -1115,7 +1233,7 @@ namespace COLID.AppDataService.Services.Implementation
                     foreach (var pidUri in favoritesListPIDUris)
                     {
                         string EncodedPIDUri = HttpUtility.UrlEncode(pidUri);
-                        var PIDUriData = elasticPIDURIsresponse[EncodedPIDUri].LastOrDefault();
+                        var PIDUriData = elasticPIDURIsresponse[EncodedPIDUri].FirstOrDefault() ?? elasticPIDURIsresponse[EncodedPIDUri].LastOrDefault();
                         if (PIDUriData!=null)
                         {
                             PIDUriData.Add(new JProperty("EntryId", favoritesList.FavoritesListEntries.Where(fle => fle.PIDUri == pidUri).Select(fle => fle.Id)));

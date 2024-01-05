@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using COLID.AppDataService.Common.DataModel;
 using COLID.AppDataService.Common.DataModels.TransferObjects;
+using Common.DataModels.TransferObjects;
 
 namespace COLID.AppDataService.Services.Interfaces
 {
@@ -48,5 +49,12 @@ namespace COLID.AppDataService.Services.Interfaces
         /// </summary>
         /// <return>list of UserId and subscriptions count</return>
         Dictionary<string, int> GetAllSubscriptionsCount();
+
+        /// <summary>
+        /// Fetches a list with the most subscribed resources
+        /// </summary>
+        /// /// <param name="take">amount of items to fetch</param>
+        /// <return>list of ResourcePidUri and SubscriptionsCount</return>
+        IEnumerable<ColidEntryMostSubscriptionsDto> GetMostSubscribedResources(int take);
     }
 }

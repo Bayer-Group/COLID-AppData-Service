@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
   </PropertyGroup>
 
   <!--<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
@@ -15,29 +15,27 @@
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="10.1.1" />
     <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="8.1.0" />
-    <PackageReference Include="COLID.Cache" Version="2.0.1076" />
-    <PackageReference Include="COLID.Common" Version="2.0.145" />
-    <PackageReference Include="COLID.Exception" Version="2.0.145" />
-    <PackageReference Include="COLID.Graph" Version="2.0.1076" />
-    <PackageReference Include="COLID.Identity" Version="2.0.145" />
-    <PackageReference Include="COLID.Swagger" Version="2.0.145" />
+    <PackageReference Include="COLID.Cache" Version="2.0.1078" />
+    <PackageReference Include="COLID.Common" Version="2.0.149" />
+    <PackageReference Include="COLID.Exception" Version="2.0.1067" />
+    <PackageReference Include="COLID.Graph" Version="2.0.1078" />
+    <PackageReference Include="COLID.Identity" Version="2.0.1066" />
+    <PackageReference Include="COLID.Swagger" Version="2.0.148" />
     <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.7" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication" Version="2.2.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.AzureAD.UI" Version="3.1.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="3.1.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="3.1.10">
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="7.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="7.0.9">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="3.1.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="3.1.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="3.1.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="3.1.10">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="7.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="7.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="7.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="7.0.9">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Graph" Version="3.20.0" />
-    <PackageReference Include="Microsoft.Identity.Client" Version="4.23.0" />
-    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="3.2.4" />
+    <PackageReference Include="Microsoft.Graph" Version="5.19.0" />
+    <PackageReference Include="Azure.Identity" Version="1.9.0" />
+    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="7.0.0" />
   </ItemGroup>
 </Project>

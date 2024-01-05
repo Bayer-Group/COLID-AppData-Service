@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using COLID.AppDataService.Common.DataModels.TransferObjects;
-using Microsoft.Graph;
+using Microsoft.Graph.Models;
 
 namespace COLID.AppDataService.Services.Graph.Interfaces
 {

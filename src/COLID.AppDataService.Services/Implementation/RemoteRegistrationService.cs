@@ -8,34 +8,31 @@ using System.Threading.Tasks;
 using COLID.AppDataService.Services.Interfaces;
 using COLID.Identity.Extensions;
 using COLID.Identity.Services;
-using COLID.AppDataService.Common.Search;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json.Linq;
 using Services.Configuration;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
+using COLID.AppDataService.Common.DataModels.TransferObjects;
 
 namespace COLID.AppDataService.Services.Implementation
 {
-    internal class RemoteSearchService : IRemoteSearchService
+    internal class RemoteRegistrationService : IRemoteRegistrationService
     {
         private readonly CancellationToken _cancellationToken;
         private readonly IHttpClientFactory _clientFactory;
         private readonly IConfiguration _configuration;
-        private readonly ITokenService<SearchServiceTokenOptions> _tokenService;
-        private readonly ILogger<RemoteSearchService> _logger;
+        private readonly ITokenService<RegistrationServiceTokenOptions> _tokenService;
+        private readonly ILogger<RemoteRegistrationService> _logger;
         private readonly bool _bypassProxy;
-        private readonly string _userEndpoint;
-        private readonly string _searchServiceDocumentApi;
+        private readonly string _registrationServiceSaveSearchApi;
+        private readonly string _registrationServiceRemoveNginxConfigApi;
 
-        public RemoteSearchService(
+        public RemoteRegistrationService(
             IHttpClientFactory clientFactory,
             IConfiguration configuration,
             IHttpContextAccessor httpContextAccessor,
-            ITokenService<SearchServiceTokenOptions> tokenService,
-            ILogger<RemoteSearchService> logger
+            ITokenService<RegistrationServiceTokenOptions> tokenService,
+            ILogger<RemoteRegistrationService> logger
             )
         {
             _clientFactory = clientFactory;
@@ -44,67 +41,64 @@ namespace COLID.AppDataService.Services.Implementation
             _cancellationToken = httpContextAccessor?.HttpContext?.RequestAborted ?? CancellationToken.None;
             _logger = logger;
             _bypassProxy = _configuration.GetValue<bool>("BypassProxy");
-            var serverUrl = _configuration.GetConnectionString("SearchServiceUrl");
-            _userEndpoint = $"{serverUrl}/api/Search";
-            _searchServiceDocumentApi = $"{serverUrl}/api/documentsByIds";
+            var serverUrl = _configuration.GetConnectionString("RegistrationServiceUrl");
+            _registrationServiceSaveSearchApi = $"{serverUrl}/api/v3/identifier/savedsearch";
+            _registrationServiceRemoveNginxConfigApi = $"{serverUrl}/api/v3/proxyConfig/removeSearchFilterProxy";
+
 
         }
 
-        public async Task<SearchResultDTO> Search(SearchRequestDto searchRequest)
+        public async Task<SearchFilterDataMarketplaceDto> RegisterSavedSearches(SearchFilterDataMarketplaceDto searchFilterDataMarketplaceDto)
         {
             using (var httpClient = (_bypassProxy ? _clientFactory.CreateClient("NoProxy") : _clientFactory.CreateClient()))
             {
                 HttpResponseMessage response = null;
-                SearchResultDTO responseContent = null;
+                SearchFilterDataMarketplaceDto responseContent = null;
                 try
                 {
-                    var path = $"{_userEndpoint}";
+                    var path = $"{_registrationServiceSaveSearchApi}";
                     var accessToken = await _tokenService.GetAccessTokenForWebApiAsync();
                     response = await httpClient.SendRequestWithBearerTokenAsync(HttpMethod.Post, path,
-                        searchRequest, accessToken, _cancellationToken);
+                        searchFilterDataMarketplaceDto, accessToken, _cancellationToken);
                     response.EnsureSuccessStatusCode();
                     if (response.Content != null)
                     {
-                        responseContent = await response.Content.ReadAsAsync<SearchResultDTO>();
+                        responseContent = await response.Content.ReadAsAsync<SearchFilterDataMarketplaceDto>();
                     }
                 }
                 catch (AuthenticationException ex)
                 {
-                    _logger.LogError("An error occured", ex);
+                    _logger.LogError("An Authentication error occured to connect to the remote registration service", ex);
                 }
                 catch (HttpRequestException ex)
                 {
-                    _logger.LogError("Couldn't connect to the remote search service.", ex);
+                    _logger.LogError("Couldn't connect to the remote registration service.", ex);
                 }
 
                 return responseContent;
             }
         }
 
-        public async Task<IDictionary<string, IEnumerable<JObject>>> GetDocumentsByIds(IEnumerable<string> identifiers, bool includeDraft = false)
+        public async Task RemovePidUriFromConfig(string pidUri)
         {
             using (var httpClient = (_bypassProxy ? _clientFactory.CreateClient("NoProxy") : _clientFactory.CreateClient()))
             {
+                HttpResponseMessage response = null;
                 try
                 {
-                    // Encode the searchRequest into a JSON object for sending
-                    string jsonobject = JsonConvert.SerializeObject(identifiers);
-                    using StringContent content = new StringContent(jsonobject, Encoding.UTF8, "application/json");
-
-                    //Fetch token for search service
+                    var path = $"{_registrationServiceRemoveNginxConfigApi}";
                     var accessToken = await _tokenService.GetAccessTokenForWebApiAsync();
-                    httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-
-                    // Post the JSON object to the SearchService endpoint
-                    HttpResponseMessage response = await httpClient.PostAsync(_searchServiceDocumentApi + $"?includeDraft={includeDraft}", content);
+                    response = await httpClient.SendRequestWithBearerTokenAsync(HttpMethod.Delete, path,
+                        pidUri, accessToken, _cancellationToken);
                     response.EnsureSuccessStatusCode();
-                    var result = JsonConvert.DeserializeObject<IDictionary<string, IEnumerable<JObject>>>(response.Content.ReadAsStringAsync().Result, new VersionConverter());
-                    return result;
+                }
+                catch (AuthenticationException ex)
+                {
+                    _logger.LogError("An Authentication error occured to connect to the remote registration service", ex);
                 }
                 catch (HttpRequestException ex)
                 {
-                    _logger.LogError("An error occurred while passing the search request to the search service GetDocumentsByIds.", ex);
-                    throw ex;
+                    _logger.LogError("Couldn't connect to the remote registration service.", ex);
                 }
             }
         }

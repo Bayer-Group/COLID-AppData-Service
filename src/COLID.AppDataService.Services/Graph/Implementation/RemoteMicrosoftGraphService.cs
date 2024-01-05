@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,19 +8,20 @@ using COLID.AppDataService.Common.Exceptions;
 using COLID.AppDataService.Common.Utilities;
 using COLID.AppDataService.Services.Graph.Interfaces;
 using COLID.Exception.Models.Business;
-using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
+using Microsoft.Graph.Models;
+using Microsoft.Graph.Models.ODataErrors;
 
 namespace COLID.AppDataService.Services.Graph.Implementation
 {
     public class RemoteMicrosoftGraphService : IRemoteGraphService
     {
-        private readonly IGraphServiceClient _graphClient;
+        private readonly GraphServiceClient _graphClient;
 
         private readonly ILogger<RemoteMicrosoftGraphService> _logger;
 
-        public RemoteMicrosoftGraphService(IGraphServiceClient graphClient, ILogger<RemoteMicrosoftGraphService> logger)
+        public RemoteMicrosoftGraphService(GraphServiceClient graphClient, ILogger<RemoteMicrosoftGraphService> logger)
         {
             _graphClient = graphClient;
             _logger = logger;
@@ -33,22 +34,21 @@ namespace COLID.AppDataService.Services.Graph.Implementation
             try
             {
                 var user = await _graphClient.Users[id]
-                                .Request()
-                                .Select(u => new
+                                .GetAsync(requestConfiguration => requestConfiguration.QueryParameters.Select = new string[]
                                 {
-                                    u.Id,
-                                    u.GivenName,
-                                    u.Surname,
-                                    u.DisplayName,
-                                    u.MailNickname,
-                                    u.AccountEnabled,
-                                    u.Mail
-                                })
-                                .GetAsync();
+                                    "id",
+                                    "givenName",
+                                    "surname",
+                                    "displayName",
+                                    "mailNickname",
+                                    "accountEnabled",
+                                    "mail",
+                                    "department"
+                                });
 
                 return user;
             }
-            catch (ServiceException e)
+            catch (ODataError e)
             {
                 throw HandleServiceException(e, id);
             }
@@ -60,13 +60,11 @@ namespace COLID.AppDataService.Services.Graph.Implementation
             {
                 var user = await _graphClient.Users[id]
                                 .Manager
-                                .Request()
-                                .Select(u => u.Id)
-                                .GetAsync();
+                                .GetAsync(requestConfiguration => requestConfiguration.QueryParameters.Select = new string[] { "id" });
 
                 return user.Id;
             }
-            catch (ServiceException e)
+            catch (ODataError e)
             {
                 throw HandleServiceException(e, id);
             }
@@ -89,28 +87,29 @@ namespace COLID.AppDataService.Services.Graph.Implementation
                     $" or startswith(mail, '{query}')";
 
                 var users = await _graphClient.Users
-                                .Request()
-                                .Filter($"{baseFilter} and ({searchFieldFilter})")
-                                .Select(u => new
+                                .GetAsync(requestConfiguration =>
                                 {
-                                    u.Id,
-                                    u.GivenName,
-                                    u.Surname,
-                                    u.DisplayName,
-                                    u.MailNickname,
-                                    u.AccountEnabled,
-                                    u.Mail
-                                })
-                                .GetAsync();
+                                    requestConfiguration.QueryParameters.Filter = $"{baseFilter} and ({searchFieldFilter})";
+                                    requestConfiguration.QueryParameters.Select = new string[]
+                                    {
+                                        "id",
+                                        "givenName",
+                                        "surname",
+                                        "displayName",
+                                        "mailNickname",
+                                        "accountEnabled",
+                                        "mail"
+                                    };
+                                });
 
-                if (users == null || !users.Any())
+                if (users == null || !users.Value.Any())
                 {
                     throw new EntityNotFoundException($"No users found for search term '{query}'", query);
                 }
 
-                return users;
+                return users.Value;
             }
-            catch (ServiceException e)
+            catch (ODataError e)
             {
                 throw HandleSearchServiceException(e, query);
             }
@@ -139,11 +138,9 @@ namespace COLID.AppDataService.Services.Graph.Implementation
                 var adUserDto = new AdUserDto(null, mail, false);
                 try
                 {
-                    var userRequest = _graphClient.Users[mail]
-                        .Request()
-                        .Select(u => new { u.Id, u.Mail, u.AccountEnabled });
+                    var userRequest = _graphClient.Users[mail];
 
-                    var adUser = await userRequest.GetAsync();
+                    var adUser = await userRequest.GetAsync(requestConfiguration => requestConfiguration.QueryParameters.Select = new string[] { "id", "mail", "accountEnabled" });
                     if (adUser != null)
                     {
                         adUserDto.Id = adUser.Id;
@@ -178,26 +175,27 @@ namespace COLID.AppDataService.Services.Graph.Implementation
                 var additionalFilter = $"mail eq '{id}'";
 
                 var groups = await _graphClient.Groups
-                                .Request()
-                                .Filter($"{baseFilter} and ({additionalFilter})")
-                                .Select(u => new
+                                .GetAsync(requestConfiguration =>
                                 {
-                                    u.Id,
-                                    u.DisplayName,
-                                    u.MailEnabled,
-                                    u.Description,
-                                    u.Mail
-                                })
-                                .GetAsync();
+                                    requestConfiguration.QueryParameters.Filter = $"{baseFilter} and ({additionalFilter})";
+                                    requestConfiguration.QueryParameters.Select = new string[]
+                                    {
+                                        "id",
+                                        "displayName",
+                                        "mailEnabled",
+                                        "description",
+                                        "mail"
+                                    };
+                                });
 
-                if (groups == null || !groups.Any())
+                if (groups == null || !groups.Value.Any())
                 {
                     throw new EntityNotFoundException($"Resource '{id}' was not found.", id);
                 }
 
-                return groups.FirstOrDefault();
+                return groups.Value.FirstOrDefault();
             }
-            catch (ServiceException e)
+            catch (ODataError e)
             {
                 throw HandleServiceException(e, id);
             }
@@ -211,26 +209,27 @@ namespace COLID.AppDataService.Services.Graph.Implementation
                 var additionalFilter = $"startswith(mail, '{query}') or startswith(displayName, '{query}')";
 
                 var groups = await _graphClient.Groups
-                                .Request()
-                                .Filter($"{baseFilter} and ({additionalFilter})")
-                                .Select(u => new
+                                .GetAsync(requestConfiguration =>
                                 {
-                                    u.Id,
-                                    u.DisplayName,
-                                    u.MailEnabled,
-                                    u.Description,
-                                    u.Mail
-                                })
-                                .GetAsync();
+                                    requestConfiguration.QueryParameters.Filter = $"{baseFilter} and ({additionalFilter})";
+                                    requestConfiguration.QueryParameters.Select = new string[]
+                                    {
+                                        "id",
+                                        "displayName",
+                                        "mailEnabled",
+                                        "description",
+                                        "mail"
+                                    };
+                                });
 
-                if (groups == null || !groups.Any())
+                if (groups == null || !groups.Value.Any())
                 {
                     throw new EntityNotFoundException($"No groups found for search term '{query}'", query);
                 }
 
-                return groups;
+                return groups.Value;
             }
-            catch (ServiceException e)
+            catch (ODataError e)
             {
                 throw HandleSearchServiceException(e, query);
             }
@@ -240,7 +239,7 @@ namespace COLID.AppDataService.Services.Graph.Implementation
 
         #region Handlers
 
-        private static System.Exception HandleSearchServiceException(ServiceException serviceException, string query)
+        private static System.Exception HandleSearchServiceException(ODataError serviceException, string query)
         {
             switch (serviceException.Error.Code)
             {
@@ -251,7 +250,7 @@ namespace COLID.AppDataService.Services.Graph.Implementation
             }
         }
 
-        private static System.Exception HandleServiceException(ServiceException serviceException, string id)
+        private static System.Exception HandleServiceException(ODataError serviceException, string id)
         {
             switch (serviceException.Error.Code)
             {

@@ -169,6 +169,13 @@ namespace COLID.AppDataService.Controllers
             return Ok(updatedUser);
         }
 
+        [HttpGet("searchAllFiltersDataMarketplace")]
+        public async Task<IActionResult> GetAllSearchFiltersDataMarketplace()
+        {
+            var searchFilter = await _userService.GetAllSearchFiltersDataMarketplaceAsync();
+            return Ok(searchFilter);
+        }
+
         #endregion [Default Search Filter - Data Marketplace]
 
         #region [Search Filter - Data Marketplace]
@@ -258,6 +265,20 @@ namespace COLID.AppDataService.Controllers
         {
             var colidEntrySubscriptionDto = await _userService.GetColidEntrySubscriptionsAsync(userId);
             return Ok(colidEntrySubscriptionDto);
+        }
+
+        [HttpGet("{userId}/latestSubscriptionsWithDetails")]
+        public async Task<IActionResult> GetLatestColidEntrySubscriptionsOfUser(Guid userId)
+        {
+            var latestColidSubscriptions = await _userService.GetLatestColidEntrySubscriptionsOfUserAsync(userId);
+            return Ok(latestColidSubscriptions);
+        }
+
+        [HttpGet("mostSubscribedResourceDetails")]
+        public async Task<IActionResult> x()
+        {
+            var mostSubscribedResources = await _userService.GetMostSubscribedColidEntrySubscriptions();
+            return Ok(mostSubscribedResources);
         }
 
         [HttpPut("{userId}/colidEntrySubscriptions")]

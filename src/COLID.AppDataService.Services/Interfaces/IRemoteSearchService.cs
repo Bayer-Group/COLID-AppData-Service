@@ -19,6 +19,6 @@ namespace COLID.AppDataService.Services.Interfaces
         /// </summary>
         /// <param name="identifiers"></param>
         /// <returns></returns>
-        Task<IDictionary<string, IEnumerable<JObject>>> GetDocumentsByIds(IEnumerable<string> identifiers);
+        Task<IDictionary<string, IEnumerable<JObject>>> GetDocumentsByIds(IEnumerable<string> identifiers, bool includeDraft = false);
     }
 }

@@ -214,12 +214,12 @@ namespace COLID.AppDataService.Services.Graph.Implementation
             }
         }
 
-        private static bool IsActiveGroup(Microsoft.Graph.Group group)
+        private static bool IsActiveGroup(Microsoft.Graph.Models.Group group)
         {
             return group.MailEnabled ?? false;
         }
 
-        private static bool IsActiveUser(Microsoft.Graph.User user)
+        private static bool IsActiveUser(Microsoft.Graph.Models.User user)
         {
             return user.AccountEnabled ?? false;
         }

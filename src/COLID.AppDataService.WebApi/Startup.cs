@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using AutoMapper;
@@ -6,12 +6,9 @@ using COLID.AppDataService.Common.AutoMapper;
 using COLID.AppDataService.Repositories;
 using COLID.AppDataService.Services;
 using COLID.Cache.Configuration;
-using COLID.Common.Logger;
 using COLID.Exception;
 using COLID.Identity;
 using COLID.Swagger;
-using CorrelationId;
-using CorrelationId.DependencyInjection;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -54,8 +51,6 @@ namespace COLID.AppDataService
                 };
             });
 
-            services.AddDefaultCorrelationId();
-            services.AddCorrelationIdLogger();
             services.AddCors();
             services.AddAutoMapper(typeof(MappingProfiles));
 
@@ -77,7 +72,6 @@ namespace COLID.AppDataService
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app)
         {
-            app.UseCorrelationId();
             app.UseHttpsRedirection();
 
             app.UseRouting();
