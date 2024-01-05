@@ -34,8 +34,8 @@ namespace COLID.AppDataService.Common.AutoMapper
             CreateMap<Message, MessageUserDto>();
             CreateMap<MessageUserDto, Message>();
 
-            CreateMap<Microsoft.Graph.User, AdUser>().ForMember(dest => dest.Cwid, opt => opt.MapFrom(src => src.MailNickname));
-            CreateMap<Microsoft.Graph.Group, AdGroup>();
+            CreateMap<Microsoft.Graph.Models.User, AdUser>().ForMember(dest => dest.Cwid, opt => opt.MapFrom(src => src.MailNickname));
+            CreateMap<Microsoft.Graph.Models.Group, AdGroup>();
         }
     }
 }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
 using COLID.AppDataService.Common.DataModel;
@@ -115,7 +115,7 @@ namespace COLID.AppDataService.Repositories.Context
 
                 foreach (var index in entity.GetIndexes())
                 {
-                    index.SetName(index.GetName().ToSnakeCase());
+                    index.SetDatabaseName(index.Name.ToSnakeCase());
                 }
             }
         }

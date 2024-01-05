@@ -11,5 +11,7 @@ namespace COLID.AppDataService.Common.DataModel
         public string SurName { get; set; }
 
         public string Cwid { get; set; }
+
+        public string Department { get; set; }
     }
 }

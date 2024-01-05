@@ -12,6 +12,8 @@ namespace COLID.AppDataService.Common.DataModel
 
         public string? SearchTerm { get; set; }
 
+        public string? PidUri { get; set; }
+
         [JsonIgnore]
         [ForeignKey("UserId")]
         public virtual User User { get; set; }

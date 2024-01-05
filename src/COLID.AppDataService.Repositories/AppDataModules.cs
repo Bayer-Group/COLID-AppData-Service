@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using COLID.AppDataService.Repositories.Context;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Data.Sqlite;
@@ -23,10 +23,11 @@ namespace COLID.AppDataService.Repositories
             var connectionString = BuildConnectionString(configuration);
             services.AddDbContext<AppDataContext>(options =>
             {
-                options.UseMySql(connectionString, mysqlOptions =>
+                options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), mysqlOptions =>
                     {
                         mysqlOptions.CommandTimeout(5);
                         mysqlOptions.EnableRetryOnFailure(3);
+                        mysqlOptions.EnableStringComparisonTranslations();
                     });
             }); // Default is scoped, which can cause errors with threading if async calls were not awaited !
 

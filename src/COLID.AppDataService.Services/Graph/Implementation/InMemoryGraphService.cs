@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using COLID.AppDataService.Common.DataModels.TransferObjects;
 using COLID.AppDataService.Services.Graph.Interfaces;
-using Microsoft.Graph;
+using Microsoft.Graph.Models;
 
 namespace COLID.AppDataService.Services.Graph.Implementation
 {
@@ -104,7 +104,8 @@ namespace COLID.AppDataService.Services.Graph.Implementation
                 DisplayName = $"{givenName} {surname}",
                 MailNickname = mailNickname,
                 AccountEnabled = accountEnabled,
-                Mail = mail ?? $"{givenName}.{surname}.{mailNickname}@bayer.com"
+                Mail = mail ?? $"{givenName}.{surname}.{mailNickname}@bayer.com",
+                Department = "BAG-FI-IT-I&O-INPL-CLP-CDM",
             };
         }
     }

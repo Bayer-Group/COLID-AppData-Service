@@ -21,7 +21,7 @@ namespace COLID.AppDataService.Services.Interfaces
         /// Create a new user from the given dto.
         /// </summary>
         /// <param name="userDto">the user to create</param>
-        User Create(UserDto userDto);
+        Task<User> Create(UserDto userDto);
 
         /// <summary>
         /// Create a new user asynchronously from the given dto.
@@ -63,9 +63,9 @@ namespace COLID.AppDataService.Services.Interfaces
         bool StoredQueryNeedsToBeEvaluated(StoredQuery storedQuery);
 
         /// <summary>
-        /// Gets a List of all Pid Uris which have been created or updated since last stored query execution date
+        /// Gets a List of all Pid Uris with the corresponding resource label which have been created or updated since last stored query execution date
         /// </summary>
-        IList<string> GetUpdatedResources(IList<SearchHit> hits, StoredQuery storedQuery);
+        IList<UpdatedResourceStoredQueryDto> GetUpdatedResources(IList<SearchHit> hits, StoredQuery storedQuery);
 
         /// <summary>
         /// Performs a search for a given searchfilterDataMarketplace object in the searchservice
@@ -77,7 +77,7 @@ namespace COLID.AppDataService.Services.Interfaces
         /// <summary>
         /// Notify user about created or updated resources since last execution of their storedquery
         /// </summary>  
-        Task NotifyUserAboutUpdates(SearchFilterDataMarketplace sf, IList<string> newPids);
+        Task NotifyUserAboutUpdates(SearchFilterDataMarketplace sf, IList<UpdatedResourceStoredQueryDto> updatedResources);
 
         /// <summary>
         /// Create Hash for a given elasticsearch search result
@@ -199,6 +199,12 @@ namespace COLID.AppDataService.Services.Interfaces
         /// <exception cref="EntityNotFoundException">in case that no user or search filters were found</exception>
         Task<User> RemoveSearchFilterDataMarketplaceAsync(Guid userId, int searchFilterId);
 
+        /// <summary> 
+        /// Get all search filters from all users 
+        /// </summary> 
+        /// <returns></returns> 
+        Task<ICollection<SearchFilterDataMarketplace>> GetAllSearchFiltersDataMarketplaceAsync();
+
         /// <summary>
         /// Get all subscribed data marketplace search filters of the user with the given Id.
         /// </summary>
@@ -239,6 +245,9 @@ namespace COLID.AppDataService.Services.Interfaces
         /// <param name="userId">The user id to search for</param>
         /// <exception cref="EntityNotFoundException">in case that no user was found for the given id</exception>
         Task<ICollection<ColidEntrySubscriptionDto>> GetColidEntrySubscriptionsAsync(Guid userId);
+
+        Task<IEnumerable<ColidEntrySubscriptionDetailsDto>> GetLatestColidEntrySubscriptionsOfUserAsync(Guid userId);
+        Task<IEnumerable<ColidEntrySubscriptionDetailsDto>> GetMostSubscribedColidEntrySubscriptions(int take = 5);
 
         /// <summary>
         /// Add the given colid entry to the collection of subscriptions per user.

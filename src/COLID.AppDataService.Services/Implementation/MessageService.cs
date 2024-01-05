@@ -154,6 +154,7 @@ namespace COLID.AppDataService.Services.Implementation
         {
             Expression<Func<Message, bool>> unreadMessagesFilter = m => !m.ReadOn.HasValue
                                                                         && m.SendOn.HasValue
+                                                                        && m.User.Id != null
                                                                         && m.SendOn < DateTime.UtcNow;
             try
             {

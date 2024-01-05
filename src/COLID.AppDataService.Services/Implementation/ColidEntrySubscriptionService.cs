@@ -8,6 +8,7 @@ using COLID.AppDataService.Common.Utilities;
 using COLID.AppDataService.Repositories.Interfaces;
 using COLID.AppDataService.Services.Interfaces;
 using COLID.Exception.Models.Business;
+using Common.DataModels.TransferObjects;
 using Microsoft.Extensions.Logging;
 
 namespace COLID.AppDataService.Services.Implementation
@@ -90,6 +91,16 @@ namespace COLID.AppDataService.Services.Implementation
                 result.Add(subscription.Key.Id.ToString(), subscription.Key.ColidEntrySubscriptions.Count());
             }
 
+            return result;
+        }
+
+        public IEnumerable<ColidEntryMostSubscriptionsDto> GetMostSubscribedResources(int take)
+        {
+            var result = GetAll()
+                .GroupBy(sub => sub.ColidPidUri)
+                .Select(group => new ColidEntryMostSubscriptionsDto { ResourcePidUri = group.Key, SubscriptionsCount = group.Count() })
+                .OrderByDescending(g => g.SubscriptionsCount)
+                .Take(take);
             return result;
         }
 
