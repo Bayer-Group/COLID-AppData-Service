@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using COLID.AppDataService.Repositories.Context;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Data.Sqlite;
@@ -103,16 +103,13 @@ namespace COLID.AppDataService.Repositories
         private static string BuildConnectionString(IConfiguration configuration)
         {
             var connectionString = configuration.GetConnectionString("MySQLConnection");
-
+            Console.WriteLine("- MySQL Connection string: " + connectionString);
             var dbUser = configuration.GetValue<string>("Database:User");
             var dbPassword = configuration.GetValue<string>("Database:Password");
 
-            connectionString = connectionString
+            return connectionString
                 .Replace("{DB_USER}", dbUser, StringComparison.Ordinal)
                 .Replace("{DB_PASSWORD}", dbPassword, StringComparison.Ordinal);
-
-            Console.WriteLine("- MySQL Connection string: " + connectionString);
-            return connectionString;
         }
     }
 }
