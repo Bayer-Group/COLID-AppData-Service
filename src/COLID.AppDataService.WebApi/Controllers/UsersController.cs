@@ -92,6 +92,13 @@ namespace COLID.AppDataService.Controllers
             return Ok(updatedEntity);
         }
 
+        [HttpPut("{userId}/userInformationFlag")]
+        public async Task<IActionResult> SetUserInformationFlag(Guid userId, [FromBody] bool showUserInformationFlag)
+        {
+            var updatedEntity = await _userService.UpdateShowUserInformationFlagAsync(userId, showUserInformationFlag);
+            return Ok(updatedEntity);
+        }
+
         #endregion [User]
 
         #region [Default Consumer Group]

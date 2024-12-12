@@ -35,6 +35,7 @@ namespace COLID.AppDataService.Common.DataModel
         public ICollection<FavoritesList> FavoritesLists { get; set; }
 
         public virtual string Department { get; set; }
+        public bool ShowUserInformationFlagDataMarketplace { get; set; }
 
     }
 }

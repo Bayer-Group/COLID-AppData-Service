@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using COLID.AppDataService.Common.DataModel;
 using COLID.AppDataService.Common.Enums;
 using COLID.AppDataService.Common.Utilities;
@@ -11,10 +11,12 @@ namespace COLID.AppDataService.Services.Implementation
     public class WelcomeMessageService : ServiceBase<WelcomeMessage>, IWelcomeMessageService
     {
         private readonly ICacheService _cache;
+        private readonly IUserService _userService;
 
-        public WelcomeMessageService(IGenericRepository repo, ICacheService cache) : base(repo)
+        public WelcomeMessageService(IGenericRepository repo, ICacheService cache, IUserService userService) : base(repo)
         {
             _cache = cache;
+            _userService = userService;
         }
 
         public WelcomeMessage GetWelcomeMessageEditor()
@@ -45,11 +47,21 @@ namespace COLID.AppDataService.Services.Implementation
         private WelcomeMessage UpdateWelcomeMessage(ColidType type, string content)
         {
             Guard.IsNotEmpty(content);
-
             var welcomeMessage = GetWelcomeMessage(type);
             welcomeMessage.Content = content;
             Update(welcomeMessage);
             Save();
+            
+            if (type == ColidType.DataMarketplace)
+            {
+                var users = _userService.GetAll();
+                foreach (var user in users)
+                {
+                    user.ShowUserInformationFlagDataMarketplace = true;
+                    _userService.Update(user);
+                }
+                _userService.Save();
+            }
 
             _cache.Delete(type.ToString(), () => { });
 

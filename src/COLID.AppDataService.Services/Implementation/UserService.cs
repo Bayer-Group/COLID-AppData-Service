@@ -58,7 +58,7 @@ namespace COLID.AppDataService.Services.Implementation
             nameof(User.DefaultConsumerGroup),
             nameof(User.SearchFiltersDataMarketplace),
             nameof(User.SearchFilterEditor),
-            nameof(User.Messages),
+            //nameof(User.Messages),
             nameof(User.MessageConfig),
         };
 
@@ -252,6 +252,15 @@ namespace COLID.AppDataService.Services.Implementation
             Update(user);
             await SaveAsync();
 
+            return user;
+        }
+
+        public async Task<User> UpdateShowUserInformationFlagAsync(Guid userId, bool showUserInformationFlag)
+        {
+            var user = await GetOneAsync(u => u.Id.Equals(userId));
+            user.ShowUserInformationFlagDataMarketplace = showUserInformationFlag;
+            Update(user);
+            await SaveAsync();
             return user;
         }
 

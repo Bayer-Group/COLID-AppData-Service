@@ -124,6 +124,14 @@ namespace COLID.AppDataService.Services.Interfaces
         Task<User> UpdateLastTimeCheckedAsync(Guid userId, DateTime time);
 
         /// <summary>
+        /// Update the showUserInformation flag for the user, that matches with the given id.
+        /// </summary>
+        /// <param name="userId">the referencing user to update</param>
+        /// <param name="showUserInformationFlag">flag value</param>
+        /// <exception cref="EntityNotFoundException">in case that no user was found</exception>
+        Task<User> UpdateShowUserInformationFlagAsync(Guid userId, bool showUserInformationFlag);
+
+        /// <summary>
         /// Get the current editor search filter for the user, that matches with the given id.
         /// </summary>
         /// <param name="userId">the referencing user</param>
